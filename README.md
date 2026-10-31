@@ -4,7 +4,8 @@
 
 ## 使い方（iPad）
 
-MIDI キーボードを使うときは、App Store の「Web MIDI Browser」で開きます（iPad の Safari は MIDI 非対応）。
+MIDI キーボードを使うときは、App Store の「Web MIDI Browser」で **https://tajirikey.github.io/Music-Notes/** を開きます（iPad の Safari は MIDI 非対応）。
+この入口ページは、キャッシュを避けて毎回最新版のアプリへ移動します。ブックマークはこの URL にしてください。
 音は KORG Module Pro などの音源アプリで鳴らし、このアプリは判定と表示だけを行います。
 
 | ページ | URL | 内容 |

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ドレミであそぼ</title>
+<style>
+/* 入口ページ: 最新のバージョン番号を調べ、その番号つきの URL へ移動する（キャッシュ対策） */
+:root { --bg: #fdf9f1; --fg: #2a2633; --muted: #7a7385; --accent: #2f6fdf; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg: #16141b; --fg: #f1edf7; --muted: #a59eb2; --accent: #6f9cff; color-scheme: dark; } }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+  display: grid; place-items: center; text-align: center; padding: 16px; box-sizing: border-box; }
+p { margin: 8px 0; font-size: 1.2rem; }
+a { color: var(--accent); font-weight: bold; }
+.sub { color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <p id="msg">さいしんの ばんを よみこんでいます…</p>
+  <p class="sub"><a id="link" href="app/">うごかないときは ここを タップ</a></p>
+</main>
+<script>
+(function () {
+  var go = function (v) { location.replace("app/?v=" + encodeURIComponent(v)); };
+  var link = document.getElementById("link");
+  link.href = "app/?v=" + Date.now();
+  fetch("app/version.json?t=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { go(j.version + "-" + Date.now()); })
+    .catch(function () { go(String(Date.now())); });
+})();
+</script>
+</body>
+</html>
