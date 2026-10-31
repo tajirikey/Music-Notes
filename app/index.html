@@ -64,6 +64,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
 .dot.on { background: var(--good); }
 .dot.off { background: var(--bad); }
+.dot.warn { background: #f08c2b; }
+.update { background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 4px 14px; font-weight: 800; font-size: .85rem; }
 
 /* ---- えんそう ---- */
 #play { gap: 10px; }
@@ -125,6 +127,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   <div class="foot">
     <span class="pill"><span class="dot" id="midiDot"></span><span id="midiText">MIDI: しらべています…</span></span>
     <span class="pill"><span class="dot" id="saveDot"></span><span id="saveText">ほぞん: しらべています…</span></span>
+    <span class="pill"><span class="dot" id="verDot"></span><span id="verText"></span></span>
+    <button class="update" id="updateBtn" type="button" hidden>あたらしい ばんに する</button>
   </div>
 </section>
 
@@ -175,6 +179,29 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const colorOf = m => `var(${COLORS[pcOf(m)] || "--nsharp"})`;
   const isBlack = m => [1,3,6,8,10].includes(pcOf(m));
   const $ = id => document.getElementById(id);
+
+  // ================= バージョン =================
+  // 更新するときは、ここと version.json の両方を書きかえる
+  const APP_VERSION = "0.2.0";
+  const APP_DATE = "2026-10-31";
+  (async () => {
+    const dot = $("verDot"), text = $("verText"), btn = $("updateBtn");
+    text.textContent = `バージョン ${APP_VERSION}（${APP_DATE}）`;
+    try {
+      const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+      const latest = (await res.json()).version;
+      if (latest === APP_VERSION) {
+        dot.className = "dot on"; text.textContent += " さいしん";
+      } else {
+        dot.className = "dot warn"; text.textContent += ` → ${latest} が あります`;
+        btn.hidden = false;
+      }
+    } catch (_) {
+      text.textContent += " さいしんか かくにん できません";
+    }
+    // キャッシュを使わずに読み込み直す
+    btn.addEventListener("click", () => location.replace(location.pathname + "?v=" + Date.now()));
+  })();
 
   // ================= ほぞん（記録） =================
   const store = (() => {

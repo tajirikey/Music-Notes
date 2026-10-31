@@ -18,3 +18,4 @@ MIDI キーボードを使うときは、App Store の「Web MIDI Browser」で�
 - 判定はオクターブを区別しない（「ド」ならどの「ド」でも正解）
 - 曲データは MIDI 番号の配列で、1つの配列が楽譜の1行。著作権の切れた曲のみ収録
 - 記録は localStorage に保存
+- バージョンは `app/index.html` の `APP_VERSION` と `app/version.json` の両方を更新する。曲選び画面の下に表示され、古いときは「あたらしい ばんに する」ボタンが出る
