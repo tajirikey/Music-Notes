@@ -84,9 +84,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .status { display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 2em; }
 #msg { text-align: center; font-weight: 800; font-size: 1.2rem; }
 #msg.bad { color: var(--bad); }
-#combo { font-weight: 800; font-size: 1.3rem; color: var(--n11); white-space: nowrap; }
-#combo.pop { animation: pop .35s cubic-bezier(.3,1.8,.5,1); }
-@keyframes pop { 0% { transform: scale(1.8); } 100% { transform: scale(1); } }
 
 .stage { flex: 1; min-height: 0; position: relative; }
 #score { position: absolute; inset: 0; overflow-y: auto; background: var(--surface); border: 2px solid var(--line); border-radius: 24px;
@@ -109,11 +106,36 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 #roll { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 24px; display: block; }
 
 /* ---- けんばん ---- */
-#keys { position: relative; height: 150px; flex-shrink: 0; display: flex; touch-action: none; }
-.wk { flex: 1; position: relative; background: var(--key-white); border: 2px solid var(--line); border-radius: 0 0 12px 12px; margin: 0 1px;
-  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; font-weight: 800; color: var(--muted); font-size: .95rem;
+/* 鍵盤は本物と同じ幅で、JS が 1本ずつ位置を決める。画面の幅は左右の余白を除いた全体を使う */
+#play { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+#play .bar, #play .status { padding: 0 16px; }
+#play .stage { margin: 0 16px; }
+.keys { position: relative; height: 150px; flex-shrink: 0; touch-action: none; overflow: hidden; }
+.wk { position: absolute; top: 0; bottom: 0; background: var(--key-white); border: 2px solid var(--line); border-radius: 0 0 10px 10px;
+  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; font-weight: 800; color: var(--muted); font-size: .9rem;
   transition: background .12s, box-shadow .2s; }
-.bk { position: absolute; top: 0; height: 60%; background: var(--key-black); border-radius: 0 0 8px 8px; z-index: 2; }
+.bk { position: absolute; top: 0; height: 60%; background: var(--key-black); border-radius: 0 0 6px 6px; z-index: 2; }
+.wk.extra { opacity: .4; }
+.bk.extra { opacity: .3; }
+#scaleNote { text-align: center; font-size: .8rem; color: var(--muted); margin: -6px 0 0; }
+
+/* ---- けんばんの おおきさ あわせ ---- */
+#calib { gap: 16px; overflow-y: auto; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+#calib .inner { padding: 0 16px; display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+#calib h1 { font-weight: 800; font-size: 1.6rem; margin: 8px 0 0; }
+#calib p { margin: 0; }
+.adj { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.adj .num { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 5.5em; text-align: center; }
+.round { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); font-size: 2rem; font-weight: 800; }
+.adj input { width: 7em; font: inherit; font-size: 1.1rem; padding: 8px 10px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); }
+.btns { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn { background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 10px 22px; font-weight: 800; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+#calibKeys { margin-top: auto; }
+.calibmark { position: absolute; top: 4px; transform: translateX(-50%); font-size: .75rem; font-weight: 800; color: var(--accent); z-index: 3; white-space: nowrap; }
+.ruler { height: 26px; position: relative; flex-shrink: 0; }
+.ruler i { position: absolute; bottom: 0; width: 1px; background: var(--muted); }
+.ruler b { position: absolute; bottom: 12px; font-size: .7rem; color: var(--muted); transform: translateX(-50%); font-weight: 500; }
 .wk.target, .bk.target { background: var(--tc); color: #fff; border-color: var(--tc); box-shadow: 0 0 24px var(--tc); }
 .wk.hit, .bk.hit { filter: brightness(1.3); }
 .wk.miss, .bk.miss { background: var(--bad) !important; color: #fff; }
@@ -141,7 +163,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   .note { width: 60px; height: 60px; font-size: 1.35rem; border-radius: 16px; }
   .note.small { font-size: 1.05rem; }
   .progress { width: 80px; }
-  #keys { height: 120px; }
+  .keys { height: 120px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .note.now, .note.shake, .note.hitpop, .cheer span, #perfect { animation: none !important; }
@@ -158,7 +180,33 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     <span class="pill"><span class="dot" id="saveDot"></span><span id="saveText">ほぞん: しらべています…</span></span>
     <span class="pill"><span class="dot" id="verDot"></span><span id="verText"></span></span>
     <button class="update" id="updateBtn" type="button" hidden>あたらしい ばんに する</button>
+    <button class="update" id="calibBtn" type="button">けんばんの おおきさ</button>
   </div>
+</section>
+
+<section id="calib" class="screen" hidden>
+  <div class="inner">
+    <h1>けんばんの おおきさを あわせよう</h1>
+    <p>iPad の すぐ てまえに キーボードを おいて、がめんの けんばんと ほんものの けんばんの はばが ぴったり かさなるように「−」「＋」で あわせてね。</p>
+    <div class="adj">
+      <button class="round" id="calMinus" type="button" aria-label="ちいさく">−</button>
+      <div class="num" id="calNum"></div>
+      <button class="round" id="calPlus" type="button" aria-label="おおきく">＋</button>
+    </div>
+    <p class="sub" style="color:var(--muted);font-size:.9rem">おとなの ひとへ：ものさしで はかる ときは、「ド」の ひだりはし から つぎの「ド」の ひだりはし まで（白い けんばん 7こぶん）の ながさを mm で いれてください。</p>
+    <div class="adj">
+      <label for="calInput">1オクターブ</label>
+      <input id="calInput" type="number" inputmode="decimal" min="80" max="200" step="0.5">
+      <span>mm</span>
+    </div>
+    <div class="btns">
+      <button class="btn primary" id="calDone" type="button">できた</button>
+      <button class="btn" id="calReset" type="button">はじめの おおきさに もどす</button>
+    </div>
+    <p id="calDevice" style="color:var(--muted);font-size:.8rem"></p>
+  </div>
+  <div class="ruler" id="calRuler" aria-hidden="true"></div>
+  <div class="keys" id="calibKeys"></div>
 </section>
 
 <section id="play" class="screen" hidden>
@@ -173,13 +221,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   </div>
   <div class="status">
     <div id="msg" role="status"></div>
-    <div id="combo" aria-live="polite"></div>
   </div>
   <div class="stage" id="stage">
     <div id="score"></div>
     <canvas id="roll" hidden></canvas>
   </div>
-  <div id="keys" aria-label="けんばん"></div>
+  <div class="keys" id="keys" aria-label="けんばん"></div>
+  <p id="scaleNote" hidden>きょくが ながいので、けんばんを すこし ちいさく しています</p>
 </section>
 
 <section id="done" class="screen" hidden>
@@ -229,7 +277,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // ================= バージョン =================
   // 更新するときは、ここと version.json の両方を書きかえる
-  const APP_VERSION = "0.3.0";
+  const APP_VERSION = "0.4.0";
   const APP_DATE = "2026-10-31";
   (async () => {
     const dot = $("verDot"), text = $("verText"), btn = $("updateBtn");
@@ -263,6 +311,51 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   })();
   $("saveDot").className = "dot " + (store.ok ? "on" : "off");
   $("saveText").textContent = store.ok ? "ほぞん: できる" : "ほぞん: できない（きろくは のこりません）";
+
+  // ================= けんばんの じっさいの おおきさ =================
+  // iPad Pro 11インチは 264ppi（1インチ = 画面の 132 ポイント）なので 1mm = 5.197 ポイント。
+  // ほかの機種はわからないので、ブラウザの標準（1インチ = 96）で仮に計算し、−＋で合わせてもらう。
+  const IS_IPAD = /iPad/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const PX_PER_MM = (IS_IPAD ? 132 : 96) / 25.4;
+  // microKEY2 Air 49 の 1オクターブ（白鍵 7本）の幅。公式の数値が見つからないので仮の値。実機に合わせて調整する
+  const DEFAULT_OCTAVE_MM = 140;
+  let octaveMm = +store.pref("octaveMm") || DEFAULT_OCTAVE_MM;
+  const keyPitchPx = () => octaveMm / 7 * PX_PER_MM;
+
+  const calibMap = new Map();
+  function drawCalib() {
+    $("calNum").textContent = octaveMm.toFixed(1) + " mm";
+    $("calInput").value = octaveMm.toFixed(1);
+    const wrap = $("calibKeys");
+    buildKeys(wrap, calibMap, 60, 71);
+    calibMap.forEach(k => k.classList.remove("extra"));
+    // ものさし（1cm ごと）。本物のものさしを当てて、画面の 1cm が正しいかも確かめられる
+    const ruler = $("calRuler"); ruler.textContent = "";
+    const cm = PX_PER_MM * 10, W = ruler.clientWidth;
+    for (let i = 0; i * cm / 2 <= W; i++) {
+      const t = document.createElement("i");
+      t.style.left = (i * cm / 2) + "px"; t.style.height = i % 2 ? "6px" : "12px";
+      ruler.appendChild(t);
+      if (i % 2 === 0 && i > 0) { const b = document.createElement("b"); b.textContent = (i / 2) + "cm"; b.style.left = (i * cm / 2) + "px"; ruler.appendChild(b); }
+    }
+  }
+  function setOctave(mm) {
+    octaveMm = Math.max(80, Math.min(200, Math.round(mm * 2) / 2));
+    store.pref("octaveMm", octaveMm);
+    drawCalib();
+  }
+  $("calibBtn").addEventListener("click", () => {
+    show("calib");
+    $("calDevice").textContent = IS_IPAD
+      ? "iPad Pro 11インチ として けいさん しています（1mm = 5.2 てん）"
+      : "この きかいの がめんの おおきさは わからないので、−＋で あわせてね";
+    drawCalib();
+  });
+  $("calMinus").addEventListener("click", () => setOctave(octaveMm - 0.5));
+  $("calPlus").addEventListener("click", () => setOctave(octaveMm + 0.5));
+  $("calInput").addEventListener("change", e => { const v = parseFloat(e.target.value); if (v) setOctave(v); });
+  $("calReset").addEventListener("click", () => setOctave(DEFAULT_OCTAVE_MM));
+  $("calDone").addEventListener("click", () => { renderList(); show("select"); });
 
   // ================= にゅうりょく（MIDI と がめんの けんばん） =================
   const input = { onNoteOn: null, onNoteOff: null };
@@ -338,9 +431,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       for (let i = 0; i < amt(8); i++) spark(x, y, "#9aa0aa", 3, 20, 2.5, 0.2);
     }
     // れんぞく の きりばん
-    function milestone(word) {
-      const x = W / 2, y = H * 0.38;
-      text(word, x, y, pick(RAINBOW), Math.min(W / 6, 110));
+    function milestone() {
       for (let s = -1; s <= 1; s += 2) {
         for (let i = 0; i < amt(40); i++) {
           const a = rnd(-1.2, -0.3), v = rnd(8, 16);
@@ -471,7 +562,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
       g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
     }
-    const hitY = () => H - 34;
+    const hitY = () => H - 4;
     const spacing = () => Math.max(70, Math.min(120, H / 4.6));
 
     function noteRect(i) {
@@ -550,13 +641,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         g.shadowBlur = 0;
       }
       g.globalAlpha = 1;
-      // くし（オルゴールの歯）
-      const y = hitY();
-      const comb = g.createLinearGradient(0, y - 6, 0, y + 30);
-      comb.addColorStop(0, "#fff3bf"); comb.addColorStop(0.4, "#ffc83d"); comb.addColorStop(1, "#b7791f");
-      g.fillStyle = comb; g.fillRect(0, y, W, 6);
-      g.shadowColor = "#ffc83d"; g.shadowBlur = 16; g.fillRect(0, y, W, 3); g.shadowBlur = 0;
-      for (let tx = 6; tx < W; tx += 14) { g.fillRect(tx, y + 6, 8, 18 + ((tx / 14) % 3) * 3); }
       // 正解したときの光
       hitFlash = hitFlash.filter(f => now - f.t < 260);
       hitFlash.forEach(f => {
@@ -603,27 +687,51 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   let song = null, flat = [], els = [], pos = 0, miss = 0, combo = 0, keyEls = new Map(), msgTimer = 0;
   let viewMode = store.pref("view") === "roll" ? "roll" : "score";
 
-  function show(id) { ["select", "play", "done"].forEach(s => $(s).hidden = s !== id); }
+  function show(id) { ["select", "play", "done", "calib"].forEach(s => $(s).hidden = s !== id); }
 
-  function buildKeys(lo, hi) {
-    const wrap = $("keys"); wrap.textContent = ""; keyEls.clear();
-    const whites = [];
-    for (let m = lo; m <= hi; m++) if (!isBlack(m)) whites.push(m);
-    whites.forEach(m => {
-      const k = document.createElement("div");
-      k.className = "wk"; k.textContent = NAMES[pcOf(m)];
-      k.dataset.m = m; wrap.appendChild(k); keyEls.set(m, k);
-    });
-    const w = 100 / whites.length;
-    for (let m = lo; m <= hi; m++) if (isBlack(m)) {
-      const idx = whites.indexOf(m - 1);
-      if (idx < 0) continue;
-      const k = document.createElement("div");
-      k.className = "bk"; k.dataset.m = m;
-      k.style.left = `calc(${(idx + 1) * w}% - ${w * 0.3}%)`; k.style.width = `${w * 0.6}%`;
-      wrap.appendChild(k); keyEls.set(m, k);
+  // 画面の鍵盤を、本物のキーボードと同じ大きさで描く。
+  // lo〜hi は曲で使う範囲。画面に入る分だけ左右に鍵盤を足す（足した鍵盤は うすく表示）。
+  // 本物の大きさで入りきらないときだけ、画面の幅に合わせて縮める。戻り値: 本物の大きさで描けたか
+  function buildKeys(wrap, map, lo, hi) {
+    wrap.textContent = ""; map.clear();
+    const W = wrap.clientWidth;
+    let pitch = keyPitchPx();
+    const need = [];
+    for (let m = lo; m <= hi; m++) if (!isBlack(m)) need.push(m);
+    const fit = Math.floor(W / pitch);
+    let actual = true;
+    if (need.length > fit) { pitch = W / need.length; actual = false; }
+    const whites = need.slice();
+    const prevWhite = m => { m--; while (isBlack(m)) m--; return m; };
+    const nextWhite = m => { m++; while (isBlack(m)) m++; return m; };
+    for (let side = 0; whites.length < Math.max(fit, need.length); side ^= 1) {
+      if (side) whites.unshift(prevWhite(whites[0])); else whites.push(nextWhite(whites[whites.length - 1]));
     }
+    const off = (W - whites.length * pitch) / 2;
+    const inSong = m => m >= lo && m <= hi;
+    whites.forEach((m, i) => {
+      const k = document.createElement("div");
+      k.className = "wk" + (inSong(m) ? "" : " extra"); k.textContent = NAMES[pcOf(m)];
+      k.style.left = (off + i * pitch + 1) + "px"; k.style.width = (pitch - 2) + "px";
+      k.dataset.m = m; wrap.appendChild(k); map.set(m, k);
+    });
+    const bw = pitch * 0.58;
+    whites.forEach((m, i) => {
+      const b = m + 1;
+      if (!isBlack(b) || i === whites.length - 1) return;
+      const k = document.createElement("div");
+      k.className = "bk" + (inSong(b) ? "" : " extra"); k.dataset.m = b;
+      k.style.left = (off + (i + 1) * pitch - bw / 2) + "px"; k.style.width = bw + "px";
+      wrap.appendChild(k); map.set(b, k);
+    });
+    return actual;
   }
+  let songLo = 60, songHi = 71;
+  function rebuildPlayKeys() {
+    const actual = buildKeys($("keys"), keyEls, songLo, songHi);
+    $("scaleNote").hidden = actual;
+  }
+  addEventListener("resize", () => { if (!$("play").hidden) { rebuildPlayKeys(); update(); } if (!$("calib").hidden) drawCalib(); });
   $("keys").addEventListener("pointerdown", e => {
     const k = e.target.closest("[data-m]"); if (!k) return;
     e.preventDefault(); const m = +k.dataset.m; emitOn(m);
@@ -658,11 +766,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       });
       score.appendChild(row);
     });
-    const lo = Math.min(...flat), hi = Math.max(...flat);
-    buildKeys(lo - pcOf(lo), hi + (11 - pcOf(hi)));
-    setMsg("ひかって いる おとを ひいてね", "");
-    $("combo").textContent = "";
+    songLo = Math.min(...flat); songHi = Math.max(...flat);
+    setMsg("", "");
     show("play");
+    rebuildPlayKeys();
     score.scrollTop = 0;
     roll.reset();
     setView(viewMode);
@@ -690,8 +797,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
   }
 
-  const PRAISE = ["じょうず！", "すごい！", "いいね！", "てんさい！", "さいこう！"];
-
   input.onNoteOn = m => {
     if ($("play").hidden || pos >= flat.length) return;
     const k = keyEls.get(m);
@@ -710,17 +815,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       }
       if (pt) fx.hit(pt.x, pt.y, hexOf(want), combo);
       if (k) { const kr = k.getBoundingClientRect(); fx.hit(kr.left + kr.width / 2, kr.top + 20, hexOf(want), Math.min(combo, 4)); }
-      const c = $("combo");
-      c.textContent = combo >= 2 ? `れんぞく ${combo}！` : "";
-      c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop");
-      if (combo % 5 === 0) fx.milestone(PRAISE[(combo / 5 - 1) % PRAISE.length]);
+      if (combo % 5 === 0) fx.milestone();
       pos++;
       setMsg("", "");
       update();
       if (pos >= flat.length) setTimeout(finish, 450);
     } else {
       miss++; combo = 0;
-      $("combo").textContent = "";
       if (k) { k.classList.add("miss"); setTimeout(() => k.classList.remove("miss"), 300); const kr = k.getBoundingClientRect(); fx.miss(kr.left + kr.width / 2, kr.top + 20); }
       if (viewMode === "roll") roll.wrong(m);
       else { const cur = els[pos]; cur.classList.remove("shake"); void cur.offsetWidth; cur.classList.add("shake"); setTimeout(() => cur.classList.remove("shake"), 400); }
