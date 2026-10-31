@@ -2,11 +2,19 @@
 
 子供向けの楽譜アプリ（単音メロディをカタカナの「ドレミ」で表示）の試作リポジトリです。
 
-## 試作
+## 使い方（iPad）
 
-- [`mic-test/`](mic-test/index.html) … iPad のマイクで、KORG Module Pro などから出た音を聞き取って「ドレミ」を表示するテストページ。
-  打鍵の検出（同じ音の連打を数える）も試せます。
+MIDI キーボードを使うときは、App Store の「Web MIDI Browser」で開きます（iPad の Safari は MIDI 非対応）。
+音は KORG Module Pro などの音源アプリで鳴らし、このアプリは判定と表示だけを行います。
 
-マイクを使うには https で開く必要があります。GitHub Pages を有効にすると、次の URL で開けます。
+| ページ | URL | 内容 |
+|---|---|---|
+| [`app/`](app/index.html) | https://tajirikey.github.io/Music-Notes/app/ | 演奏画面の試作。曲を選び、光っている音を弾くと次へ進む |
+| [`mic-test/`](mic-test/index.html) | https://tajirikey.github.io/Music-Notes/mic-test/ | マイク・MIDI の聞き取りテスト |
 
-`https://tajirikey.github.io/Music-Notes/mic-test/`
+## 構成メモ
+
+- 入力は `noteOn(midi)` に統一（MIDI・画面の鍵盤。マイクはあとで追加する予定）
+- 判定はオクターブを区別しない（「ド」ならどの「ド」でも正解）
+- 曲データは MIDI 番号の配列で、1つの配列が楽譜の1行。著作権の切れた曲のみ収録
+- 記録は localStorage に保存

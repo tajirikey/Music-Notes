@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>ドレミであそぼ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap">
+<style>
+/* レイアウト: 上=ヘッダー、中央=カタカナ楽譜（スクロール）、下=画面の鍵盤（固定）。iPad 横向き・縦向きの両方 */
+:root {
+  --bg: #fdf9f1;
+  --surface: #ffffff;
+  --fg: #2a2633;
+  --muted: #7a7385;
+  --line: #e8e1d3;
+  --accent: #2f6fdf;
+  --good: #1f9d55;
+  --bad: #e5484d;
+  --key-white: #ffffff;
+  --key-black: #2a2633;
+  --font-display: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+  /* 音ごとの色 */
+  --n0: #e5484d; --n2: #f08c2b; --n4: #e0b100; --n5: #3fa34d;
+  --n7: #23a6d5; --n9: #3b5bdb; --n11: #9c4dcc; --nsharp: #6b7280;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16141b; --surface: #211e28; --fg: #f1edf7; --muted: #a59eb2; --line: #34303d;
+    --accent: #6f9cff; --good: #4ade80; --bad: #ff6b6f; --key-white: #ece8f2; --key-black: #0c0b0f;
+    color-scheme: dark;
+  }
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1.5;
+  -webkit-user-select: none; user-select: none; overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+
+/* ---- きょくえらび ---- */
+#select { overflow-y: auto; gap: 18px; }
+#select h1 { font-weight: 800; font-size: 2rem; margin: 8px 0 0; }
+.songs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.song {
+  text-align: left; background: var(--surface); border: 2px solid var(--line); border-radius: 20px;
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;
+}
+.song:active { transform: scale(.98); }
+.song .t { font-weight: 800; font-size: 1.35rem; }
+.song .p { display: flex; gap: 4px; flex-wrap: wrap; }
+.song .p span { width: 26px; height: 26px; border-radius: 8px; color: #fff; font-size: .75rem; font-weight: 800; display: grid; place-items: center; }
+.song .r { color: var(--muted); font-size: .9rem; }
+.foot { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: .85rem; }
+.pill { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--good); }
+.dot.off { background: var(--bad); }
+
+/* ---- えんそう ---- */
+#play { gap: 10px; }
+.bar { display: flex; align-items: center; gap: 12px; }
+.back { background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 6px 16px; font-weight: 800; }
+.bar h2 { margin: 0; font-size: 1.4rem; font-weight: 800; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progress { width: 160px; height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.progress > div { height: 100%; width: 0; background: var(--good); transition: width .2s; }
+#msg { min-height: 1.6em; text-align: center; font-weight: 800; font-size: 1.25rem; }
+#msg.bad { color: var(--bad); }
+#msg.good { color: var(--good); }
+
+#score { flex: 1; overflow-y: auto; background: var(--surface); border: 2px solid var(--line); border-radius: 24px;
+  padding: 18px; display: flex; flex-direction: column; gap: 18px; scroll-behavior: smooth; }
+.line { display: flex; flex-wrap: wrap; gap: 10px; }
+.note {
+  width: 76px; height: 76px; border-radius: 20px; color: #fff; font-weight: 800; font-size: 1.7rem;
+  display: grid; place-items: center; position: relative; transition: opacity .2s, transform .15s;
+}
+.note.small { font-size: 1.35rem; }
+.note.done { opacity: .28; }
+.note.done::after { content: "✓"; position: absolute; right: 4px; top: 0; font-size: .9rem; }
+.note.now { transform: scale(1.14); box-shadow: 0 0 0 5px var(--bg), 0 0 0 9px var(--fg); animation: bob 1s ease-in-out infinite; z-index: 1; }
+.note.shake { animation: shake .35s; }
+@keyframes bob { 50% { transform: scale(1.22); } }
+@keyframes shake { 20%,60% { transform: translateX(-8px) scale(1.14); } 40%,80% { transform: translateX(8px) scale(1.14); } }
+
+/* ---- けんばん ---- */
+#keys { position: relative; height: 150px; flex-shrink: 0; display: flex; touch-action: none; }
+.wk { flex: 1; position: relative; background: var(--key-white); border: 2px solid var(--line); border-radius: 0 0 12px 12px; margin: 0 1px;
+  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; font-weight: 800; color: var(--muted); font-size: .95rem; }
+.bk { position: absolute; top: 0; height: 60%; background: var(--key-black); border-radius: 0 0 8px 8px; z-index: 2; }
+.wk.target, .bk.target { background: var(--tc); color: #fff; border-color: var(--tc); }
+.wk.hit, .bk.hit { filter: brightness(.8); }
+.wk.miss, .bk.miss { background: var(--bad) !important; color: #fff; }
+
+/* ---- できた ---- */
+#done { align-items: center; justify-content: center; gap: 20px; text-align: center; background: var(--bg); z-index: 5; }
+#done .big { font-size: clamp(3rem, 10vw, 5.5rem); font-weight: 800; margin: 0; color: var(--good); }
+#done .stars { font-size: 3rem; letter-spacing: .2em; }
+#done .row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.cta { background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 14px 30px; font-weight: 800; font-size: 1.3rem; }
+.cta.sub { background: var(--surface); color: var(--fg); border: 2px solid var(--line); }
+
+@media (max-width: 700px) {
+  .note { width: 60px; height: 60px; font-size: 1.35rem; border-radius: 16px; }
+  .note.small { font-size: 1.05rem; }
+  .progress { width: 90px; }
+  #keys { height: 120px; }
+}
+@media (prefers-reduced-motion: reduce) { .note.now, .note.shake { animation: none; } }
+</style>
+</head>
+<body>
+
+<section id="select" class="screen">
+  <h1>どの きょくを ひく？</h1>
+  <div class="songs" id="songList"></div>
+  <div class="foot">
+    <span class="pill"><span class="dot" id="midiDot"></span><span id="midiText">MIDI: しらべています…</span></span>
+    <span class="pill"><span class="dot" id="saveDot"></span><span id="saveText">ほぞん: しらべています…</span></span>
+  </div>
+</section>
+
+<section id="play" class="screen" hidden>
+  <div class="bar">
+    <button class="back" id="backBtn" type="button">← もどる</button>
+    <h2 id="playTitle"></h2>
+    <div class="progress" aria-hidden="true"><div id="progBar"></div></div>
+  </div>
+  <div id="msg" role="status"></div>
+  <div id="score"></div>
+  <div id="keys" aria-label="けんばん"></div>
+</section>
+
+<section id="done" class="screen" hidden>
+  <p class="big">できた！</p>
+  <div class="stars" id="stars"></div>
+  <p id="doneText"></p>
+  <div class="row">
+    <button class="cta" id="againBtn" type="button">もういちど</button>
+    <button class="cta sub" id="toListBtn" type="button">ほかの きょく</button>
+  </div>
+</section>
+
+<script>
+(() => {
+  // ================= きょくデータ =================
+  // 音は MIDI 番号（ド4 = 60）。1つの配列が楽譜の1行。著作権の切れた曲のみ。
+  const D=60, R=62, M=64, F=65, S=67, L=69, T=71, D5=72, S3=55;
+  const SONGS = [
+    { id: "kaeru", title: "かえるのうた", lines: [
+      [D,R,M,F,M,R,D], [M,F,S,L,S,F,M], [D,D,D,D], [D,D,R,R,M,M,F,F,M,R,D] ] },
+    { id: "mary", title: "メリーさんのひつじ", lines: [
+      [M,R,D,R,M,M,M], [R,R,R,M,S,S], [M,R,D,R,M,M,M], [R,R,M,R,D] ] },
+    { id: "kirakira", title: "きらきらぼし", lines: [
+      [D,D,S,S,L,L,S], [F,F,M,M,R,R,D], [S,S,F,F,M,M,R], [S,S,F,F,M,M,R], [D,D,S,S,L,L,S], [F,F,M,M,R,R,D] ] },
+    { id: "chocho", title: "ちょうちょう", lines: [
+      [S,M,M,F,R,R], [D,R,M,F,S,S,S], [S,M,M,M,F,R,R,R], [D,M,S,S,M,M,M],
+      [R,R,R,R,R,M,F], [M,M,M,M,M,F,S], [S,M,M,M,F,R,R,R], [D,M,S,S,M,M,M] ] },
+    { id: "yorokobi", title: "よろこびのうた", lines: [
+      [M,M,F,S,S,F,M,R], [D,D,R,M,M,R,R], [M,M,F,S,S,F,M,R], [D,D,R,M,R,D,D],
+      [R,R,M,D,R,M,F,M,D], [R,M,F,M,R,D,R,S3], [M,M,F,S,S,F,M,R], [D,D,R,M,R,D,D] ] },
+  ];
+
+  const NAMES = ["ド","ド♯","レ","レ♯","ミ","ファ","ファ♯","ソ","ソ♯","ラ","ラ♯","シ"];
+  const COLORS = { 0:"--n0", 2:"--n2", 4:"--n4", 5:"--n5", 7:"--n7", 9:"--n9", 11:"--n11" };
+  const pcOf = m => ((m % 12) + 12) % 12;
+  const colorOf = m => `var(${COLORS[pcOf(m)] || "--nsharp"})`;
+  const isBlack = m => [1,3,6,8,10].includes(pcOf(m));
+  const $ = id => document.getElementById(id);
+
+  // ================= ほぞん（記録） =================
+  const store = (() => {
+    const KEY = "doremi.records.v1";
+    let ok = false;
+    try { localStorage.setItem("doremi.test", "1"); ok = localStorage.getItem("doremi.test") === "1"; localStorage.removeItem("doremi.test"); } catch (_) {}
+    const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) { return {}; } };
+    const save = d => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (_) {} };
+    return {
+      ok,
+      get: id => load()[id],
+      record(id, miss) {
+        const d = load(); const r = d[id] || { plays: 0, best: null };
+        r.plays++; r.best = r.best === null ? miss : Math.min(r.best, miss); r.last = Date.now();
+        d[id] = r; save(d); return r;
+      },
+    };
+  })();
+  $("saveDot").className = "dot " + (store.ok ? "on" : "off");
+  $("saveText").textContent = store.ok ? "ほぞん: できる" : "ほぞん: できない（きろくは のこりません）";
+
+  // ================= にゅうりょく（MIDI と がめんの けんばん） =================
+  // どちらから来ても noteOn(midi) を呼ぶ。マイクを足すときもここに追加する。
+  const input = { onNoteOn: null, onNoteOff: null };
+  const emitOn = m => input.onNoteOn && input.onNoteOn(m);
+  const emitOff = m => input.onNoteOff && input.onNoteOff(m);
+
+  (async () => {
+    const dot = $("midiDot"), text = $("midiText");
+    if (!navigator.requestMIDIAccess) {
+      dot.className = "dot off"; text.textContent = "MIDI: つかえません（がめんの けんばんで ひけます）"; return;
+    }
+    try {
+      const access = await navigator.requestMIDIAccess();
+      const attach = () => {
+        const names = [];
+        access.inputs.forEach(i => {
+          names.push(i.name || "キーボード");
+          i.onmidimessage = e => {
+            const [st, n, v] = e.data, cmd = st & 0xf0;
+            if (cmd === 0x90 && v > 0) emitOn(n);
+            else if (cmd === 0x80 || (cmd === 0x90 && v === 0)) emitOff(n);
+          };
+        });
+        dot.className = "dot " + (names.length ? "on" : "off");
+        text.textContent = names.length ? "MIDI: " + names.join("、") : "MIDI: キーボードが つながっていません";
+      };
+      access.onstatechange = attach; attach();
+    } catch (e) {
+      dot.className = "dot off"; text.textContent = "MIDI: つかえません（" + (e.name || "") + "）";
+    }
+  })();
+
+  // ================= きょくえらび =================
+  function renderList() {
+    const list = $("songList"); list.textContent = "";
+    SONGS.forEach(song => {
+      const b = document.createElement("button");
+      b.className = "song"; b.type = "button";
+      const r = store.get(song.id);
+      const preview = song.lines[0].map(m => `<span style="background:${colorOf(m)}">${NAMES[pcOf(m)][0]}</span>`).join("");
+      b.innerHTML = `<span class="t"></span><span class="p">${preview}</span><span class="r"></span>`;
+      b.querySelector(".t").textContent = song.title;
+      b.querySelector(".r").textContent = r ? `${r.plays}かい ひいた ／ いちばん: まちがい ${r.best}こ` : "まだ ひいていない";
+      b.addEventListener("click", () => startSong(song));
+      list.appendChild(b);
+    });
+  }
+
+  // ================= えんそう =================
+  let song = null, flat = [], els = [], pos = 0, miss = 0, keyEls = new Map(), msgTimer = 0;
+
+  function show(id) { ["select", "play", "done"].forEach(s => $(s).hidden = s !== id); }
+
+  function buildKeys(lo, hi) {
+    const wrap = $("keys"); wrap.textContent = ""; keyEls.clear();
+    const whites = [];
+    for (let m = lo; m <= hi; m++) if (!isBlack(m)) whites.push(m);
+    whites.forEach(m => {
+      const k = document.createElement("div");
+      k.className = "wk"; k.textContent = NAMES[pcOf(m)];
+      k.dataset.m = m; wrap.appendChild(k); keyEls.set(m, k);
+    });
+    const w = 100 / whites.length;
+    for (let m = lo; m <= hi; m++) if (isBlack(m)) {
+      const idx = whites.indexOf(m - 1);
+      if (idx < 0) continue;
+      const k = document.createElement("div");
+      k.className = "bk"; k.dataset.m = m;
+      k.style.left = `calc(${(idx + 1) * w}% - ${w * 0.3}%)`; k.style.width = `${w * 0.6}%`;
+      wrap.appendChild(k); keyEls.set(m, k);
+    }
+  }
+  // がめんの けんばんを タップしても ひける（MIDI が ないときの テスト用）
+  $("keys").addEventListener("pointerdown", e => {
+    const k = e.target.closest("[data-m]"); if (!k) return;
+    e.preventDefault(); const m = +k.dataset.m; emitOn(m);
+    const up = () => { emitOff(m); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointerup", up);
+  });
+
+  function startSong(s) {
+    song = s; flat = s.lines.flat(); pos = 0; miss = 0; els = [];
+    $("playTitle").textContent = s.title;
+    const score = $("score"); score.textContent = "";
+    const longest = Math.max(...s.lines.map(l => l.length));
+    s.lines.forEach(line => {
+      const row = document.createElement("div"); row.className = "line";
+      line.forEach(m => {
+        const n = document.createElement("div");
+        const name = NAMES[pcOf(m)];
+        n.className = "note" + (name.length > 1 ? " small" : "");
+        n.textContent = name; n.style.background = colorOf(m);
+        row.appendChild(n); els.push(n);
+      });
+      score.appendChild(row);
+    });
+    const lo = Math.min(...flat), hi = Math.max(...flat);
+    buildKeys(lo - pcOf(lo), hi + (11 - pcOf(hi)) + (pcOf(hi) === 0 ? 0 : 0));
+    setMsg("ひかって いる おとを ひいてね", "");
+    show("play");
+    score.scrollTop = 0;
+    update();
+  }
+
+  function setMsg(t, kind, ms) {
+    const m = $("msg"); m.textContent = t; m.className = kind || "";
+    clearTimeout(msgTimer);
+    if (ms) msgTimer = setTimeout(() => { m.textContent = ""; m.className = ""; }, ms);
+  }
+
+  function update() {
+    els.forEach((e, i) => { e.classList.toggle("done", i < pos); e.classList.toggle("now", i === pos); });
+    $("progBar").style.width = (pos / flat.length * 100) + "%";
+    keyEls.forEach(k => { k.classList.remove("target"); k.style.removeProperty("--tc"); });
+    if (pos < flat.length) {
+      const m = flat[pos]; const k = keyEls.get(m);
+      if (k) { k.classList.add("target"); k.style.setProperty("--tc", colorOf(m)); }
+      const cur = els[pos];
+      const box = $("score"), top = cur.parentElement.offsetTop - box.offsetTop - 18;
+      if (Math.abs(box.scrollTop - top) > 4) box.scrollTop = top;
+    }
+  }
+
+  input.onNoteOn = m => {
+    if ($("play").hidden || pos >= flat.length) return;
+    const k = keyEls.get(m);
+    const want = flat[pos];
+    // オクターブは くべつしない（ドなら どの ドでも OK）
+    if (pcOf(m) === pcOf(want)) {
+      if (k) k.classList.add("hit");
+      pos++;
+      if (pos >= flat.length) { update(); setTimeout(finish, 350); return; }
+      setMsg("", "");
+      update();
+    } else {
+      miss++;
+      if (k) { k.classList.add("miss"); setTimeout(() => k.classList.remove("miss"), 300); }
+      const cur = els[pos]; cur.classList.remove("shake"); void cur.offsetWidth; cur.classList.add("shake");
+      setTimeout(() => cur.classList.remove("shake"), 400);
+      setMsg(`いまのは「${NAMES[pcOf(m)]}」だよ。つぎは「${NAMES[pcOf(want)]}」`, "bad", 1800);
+    }
+  };
+  input.onNoteOff = m => { const k = keyEls.get(m); if (k) k.classList.remove("hit"); };
+
+  function finish() {
+    const r = store.record(song.id, miss);
+    $("stars").textContent = miss === 0 ? "★★★" : miss <= 3 ? "★★☆" : "★☆☆";
+    $("doneText").textContent = miss === 0
+      ? "まちがい 0こ！ かんぺき！"
+      : `まちがい ${miss}こ（いちばん いいのは ${r.best}こ）`;
+    show("done");
+  }
+
+  $("backBtn").addEventListener("click", () => { renderList(); show("select"); });
+  $("againBtn").addEventListener("click", () => startSong(song));
+  $("toListBtn").addEventListener("click", () => { renderList(); show("select"); });
+
+  renderList();
+})();
+</script>
+</body>
+</html>
