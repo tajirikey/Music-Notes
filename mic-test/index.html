@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ドレミ聞き取りテスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap">
+<style>
+/* レイアウト: 大きな音名表示 → メーター → 弾いた音の履歴 → 設定と手順。タブレット縦横どちらでも1カラム中心 */
+:root {
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --fg: #1d2433;
+  --muted: #5d6779;
+  --line: #d9dfe8;
+  --accent: #2f6fdf;
+  --ok: #1f9d55;
+  --warn: #c2410c;
+  --font-display: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+  --font-body: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  /* 音ごとの色（子供向け教材でよく使われる配色） */
+  --n0: #e5484d; --n2: #f08c2b; --n4: #e8b90c; --n5: #3fa34d;
+  --n7: #23a6d5; --n9: #3b5bdb; --n11: #9c4dcc; --nsharp: #6b7280;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151c; --surface: #1a202b; --fg: #e8ecf3; --muted: #9aa4b5;
+    --line: #2c3442; --accent: #6f9cff; --ok: #4ade80; --warn: #fb923c;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 8px; }
+p { margin: 0; }
+.sub { color: var(--muted); font-size: .9rem; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+
+#startBtn {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.25rem;
+  background: var(--accent); color: #fff; border: 0; border-radius: 999px;
+  padding: 14px 28px; cursor: pointer; align-self: flex-start;
+}
+#startBtn:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+#startBtn[disabled] { opacity: .5; }
+
+.stage { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: center; }
+#noteName {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(5rem, 22vw, 9rem); line-height: 1.1; min-height: 1.1em;
+  color: var(--muted); transition: color .08s;
+}
+#noteSub { font-family: var(--font-mono); color: var(--muted); font-size: .95rem; font-variant-numeric: tabular-nums; }
+
+.tuner { position: relative; height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; }
+.tuner::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--fg); opacity: .5; }
+#centsBar { position: absolute; top: 0; bottom: 0; width: 10px; margin-left: -5px; left: 50%; border-radius: 5px; background: var(--ok); }
+
+.meters { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; align-items: center; font-size: .85rem; color: var(--muted); }
+.meter { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.meter > div { height: 100%; width: 0; background: var(--accent); }
+.meters output { font-family: var(--font-mono); font-variant-numeric: tabular-nums; min-width: 3.5em; text-align: right; }
+
+#history { display: flex; flex-wrap: wrap; gap: 6px; min-height: 44px; }
+#history .chip {
+  font-family: var(--font-display); font-weight: 800; color: #fff;
+  border-radius: 10px; padding: 4px 10px; font-size: 1.1rem;
+}
+#history .empty { color: var(--muted); font-size: .9rem; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+button.small {
+  font: inherit; font-size: .9rem; background: transparent; color: var(--fg);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+
+.settings { display: grid; gap: 10px; }
+.settings label { display: grid; grid-template-columns: 9em 1fr 3.5em; gap: 10px; align-items: center; font-size: .9rem; }
+.settings input[type=range] { width: 100%; }
+.settings output { font-family: var(--font-mono); text-align: right; }
+
+#status { font-size: .9rem; }
+#status.warn { color: var(--warn); }
+#status.ok { color: var(--ok); }
+#diag { font-family: var(--font-mono); font-size: .8rem; color: var(--muted); white-space: pre-wrap; overflow-x: auto; margin: 8px 0 0; }
+
+ol { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { #noteName { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>ドレミ聞き取りテスト</h1>
+    <p class="sub">iPad のマイクで、KORG Module Pro から出た音を聞き取れるかを確かめる試作です。</p>
+  </header>
+
+  <button id="startBtn" type="button">マイクをはじめる</button>
+  <p id="status" role="status">「マイクをはじめる」を押すと、マイクの許可を求められます。</p>
+
+  <section class="panel stage" aria-label="いま聞こえている音">
+    <div id="noteName" aria-live="polite">―</div>
+    <div id="noteSub">周波数 ― Hz ／ ずれ ― セント</div>
+    <div class="tuner" aria-hidden="true"><div id="centsBar"></div></div>
+    <div class="meters">
+      <span>音量</span><div class="meter"><div id="volBar"></div></div><output id="volOut">0</output>
+      <span>確かさ</span><div class="meter"><div id="clarBar"></div></div><output id="clarOut">0</output>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row">
+      <h2>弾いた音の順番</h2>
+      <button class="small" id="clearBtn" type="button">消す</button>
+    </div>
+    <div id="history"><span class="empty">ここに弾いた音が順番に並びます。「ミ・ミ・ミ」のように同じ音を続けて弾いたときに、3つ並ぶかも見てください。</span></div>
+  </section>
+
+  <section class="panel settings" aria-label="調整">
+    <h2>調整</h2>
+    <label for="volTh">反応する音量<input id="volTh" type="range" min="1" max="60" value="8"><output id="volThOut">8</output></label>
+    <label for="clarTh">必要な確かさ<input id="clarTh" type="range" min="50" max="98" value="85"><output id="clarThOut">85</output></label>
+    <label for="onsetTh">打鍵の検出感度<input id="onsetTh" type="range" min="11" max="40" value="16"><output id="onsetThOut">1.6</output></label>
+    <p class="sub">反応しすぎるときは「反応する音量」を上げ、同じ音の連打が1つにまとまってしまうときは「打鍵の検出感度」を下げてください。</p>
+    <pre id="diag"></pre>
+  </section>
+
+  <section class="panel">
+    <h2>テストの手順</h2>
+    <ol>
+      <li>KORG Module Pro を開き、ピアノの音色を選びます。設定で<strong>バックグラウンドで音を鳴らす</strong>機能（Background Audio など）をオンにしてください。</li>
+      <li>MIDI キーボードで音が鳴ることを確かめます。</li>
+      <li>Safari でこのページを開き、「マイクをはじめる」を押してマイクを許可します。</li>
+      <li>キーボードで「ド・レ・ミ・ファ・ソ」と1音ずつ弾き、正しく表示されるか見ます。</li>
+      <li>「ミ・ミ・ミ」と同じ音を続けて弾き、履歴に3つ並ぶか見ます。</li>
+      <li>うまくいかないときは、Split View（画面分割）で2つのアプリを並べた場合も試してください。</li>
+    </ol>
+    <p class="sub" style="margin-top:10px">確かめたいこと：① KORG の音が止まらないか ② 音名が正しいか ③ 連打を数えられるか ④ 反応の速さ</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const NAMES = ["ド","ド♯","レ","レ♯","ミ","ファ","ファ♯","ソ","ソ♯","ラ","ラ♯","シ"];
+  const COLORS = { 0:"--n0", 2:"--n2", 4:"--n4", 5:"--n5", 7:"--n7", 9:"--n9", 11:"--n11" };
+  const colorOf = pc => `var(${COLORS[pc] || "--nsharp"})`;
+
+  const $ = id => document.getElementById(id);
+  const startBtn = $("startBtn"), statusEl = $("status"), noteName = $("noteName"), noteSub = $("noteSub");
+  const centsBar = $("centsBar"), volBar = $("volBar"), clarBar = $("clarBar"), volOut = $("volOut"), clarOut = $("clarOut");
+  const historyEl = $("history"), diag = $("diag");
+  const volTh = $("volTh"), clarTh = $("clarTh"), onsetTh = $("onsetTh");
+
+  const bind = (input, out, fmt) => { const f = () => out.textContent = fmt(input.value); input.addEventListener("input", f); f(); };
+  bind(volTh, $("volThOut"), v => v);
+  bind(clarTh, $("clarThOut"), v => v);
+  bind(onsetTh, $("onsetThOut"), v => (v / 10).toFixed(1));
+
+  function setStatus(text, kind) { statusEl.textContent = text; statusEl.className = kind || ""; }
+
+  // ---- YIN 法で基本周波数を推定 ----
+  function yin(buf, sr, minF = 60, maxF = 2100, thr = 0.15) {
+    const tauMin = Math.floor(sr / maxF), tauMax = Math.min(Math.floor(sr / minF), Math.floor(buf.length / 2));
+    const W = buf.length - tauMax;
+    const d = new Float32Array(tauMax + 1);
+    for (let tau = 1; tau <= tauMax; tau++) {
+      let s = 0;
+      for (let j = 0; j < W; j++) { const x = buf[j] - buf[j + tau]; s += x * x; }
+      d[tau] = s;
+    }
+    // 累積平均で正規化
+    const c = new Float32Array(tauMax + 1);
+    c[0] = 1;
+    let run = 0;
+    for (let tau = 1; tau <= tauMax; tau++) {
+      run += d[tau];
+      c[tau] = run > 0 ? d[tau] * tau / run : 1;
+    }
+    let tau = -1;
+    for (let t = tauMin + 1; t < tauMax; t++) {
+      if (c[t] < thr) { while (t + 1 < tauMax && c[t + 1] < c[t]) t++; tau = t; break; }
+    }
+    if (tau < 0) { // しきい値未満がなければ最小値を採用（確かさは低くなる）
+      let best = tauMin + 1;
+      for (let t = tauMin + 1; t < tauMax; t++) if (c[t] < c[best]) best = t;
+      tau = best;
+    }
+    const a = c[tau - 1], b = c[tau], g = c[tau + 1] ?? b;
+    const den = a - 2 * b + g;
+    const shift = den !== 0 ? 0.5 * (a - g) / den : 0;
+    return { freq: sr / (tau + shift), clarity: Math.max(0, Math.min(1, 1 - b)) };
+  }
+
+  // ---- 状態 ----
+  let ctx, analyser, buf, running = false;
+  let envSlow = 0;            // 音量のゆっくりした平均（打鍵の検出用）
+  let lastOnsetAt = 0;        // 直前に打鍵を検出した時刻
+  let pendingOnset = 0;       // 打鍵を検出し、音の高さが定まるのを待っている時刻
+  let stableNote = null, stableCount = 0, lastCommitted = null, lastCommitAt = 0;
+  let count = 0;
+
+  function addHistory(midi) {
+    if (count === 0) historyEl.textContent = "";
+    count++;
+    const pc = ((midi % 12) + 12) % 12;
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = NAMES[pc];
+    chip.title = `${NAMES[pc]}${Math.floor(midi / 12) - 1}`;
+    chip.style.background = colorOf(pc);
+    historyEl.appendChild(chip);
+    while (historyEl.children.length > 40) historyEl.removeChild(historyEl.firstChild);
+  }
+  $("clearBtn").addEventListener("click", () => {
+    count = 0; lastCommitted = null;
+    historyEl.innerHTML = '<span class="empty">ここに弾いた音が順番に並びます。</span>';
+  });
+
+  function frame() {
+    if (!running) return;
+    analyser.getFloatTimeDomainData(buf);
+    let sq = 0; for (let i = 0; i < buf.length; i++) sq += buf[i] * buf[i];
+    const rms = Math.sqrt(sq / buf.length);
+    const vol = Math.min(100, rms * 400); // 表示用 0〜100
+    volBar.style.width = vol + "%"; volOut.textContent = vol.toFixed(0);
+
+    const now = performance.now();
+    const loud = vol >= +volTh.value;
+
+    // 打鍵の検出：音量が平均より急に上がった瞬間
+    const ratio = envSlow > 0.0005 ? rms / envSlow : (loud ? 99 : 0);
+    if (loud && ratio > onsetTh.value / 10 && now - lastOnsetAt > 90) {
+      lastOnsetAt = now; pendingOnset = now; stableCount = 0; stableNote = null;
+    }
+    envSlow = envSlow * 0.85 + rms * 0.15;
+
+    if (!loud) {
+      noteName.textContent = "―"; noteName.style.color = "var(--muted)";
+      clarBar.style.width = "0%"; clarOut.textContent = "0";
+      stableNote = null; stableCount = 0;
+      requestAnimationFrame(frame); return;
+    }
+
+    const { freq, clarity } = yin(buf, ctx.sampleRate);
+    clarBar.style.width = (clarity * 100) + "%"; clarOut.textContent = (clarity * 100).toFixed(0);
+
+    if (clarity * 100 >= +clarTh.value && freq > 0) {
+      const m = 69 + 12 * Math.log2(freq / 440);
+      const midi = Math.round(m), cents = Math.round((m - midi) * 100);
+      const pc = ((midi % 12) + 12) % 12;
+      noteName.textContent = NAMES[pc]; noteName.style.color = colorOf(pc);
+      noteSub.textContent = `${NAMES[pc]}${Math.floor(midi / 12) - 1}　周波数 ${freq.toFixed(1)} Hz ／ ずれ ${cents > 0 ? "+" : ""}${cents} セント`;
+      centsBar.style.left = (50 + cents) + "%";
+
+      // 同じ音の高さが2回続いたら1音として確定
+      if (midi === stableNote) stableCount++; else { stableNote = midi; stableCount = 1; }
+      if (stableCount >= 2) {
+        if (pendingOnset && now - pendingOnset < 400) {
+          addHistory(midi); lastCommitted = midi; lastCommitAt = now; pendingOnset = 0;
+        } else if (midi !== lastCommitted && stableCount >= 4) {
+          // 打鍵が取れなかったが、音の高さが変わった（なめらかに弾いた）場合
+          addHistory(midi); lastCommitted = midi; lastCommitAt = now;
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  async function start() {
+    startBtn.disabled = true;
+    setStatus("マイクを準備しています…");
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("このブラウザはマイクに対応していません（https で開いているか確認してください）");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      await ctx.resume();
+      const src = ctx.createMediaStreamSource(stream);
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      src.connect(analyser);
+      buf = new Float32Array(analyser.fftSize);
+
+      const track = stream.getAudioTracks()[0];
+      const s = track.getSettings ? track.getSettings() : {};
+      const fmt = v => v === undefined ? "不明" : (v ? "オン" : "オフ");
+      diag.textContent =
+        `サンプリング周波数: ${ctx.sampleRate} Hz\n` +
+        `エコー除去: ${fmt(s.echoCancellation)} ／ ノイズ除去: ${fmt(s.noiseSuppression)} ／ 自動音量: ${fmt(s.autoGainControl)}\n` +
+        `ブラウザ: ${navigator.userAgent}`;
+      const ecOn = s.echoCancellation === true;
+      setStatus(ecOn
+        ? "マイクが動いています。ただしエコー除去がオンのままなので、iPad 自身の音が消される可能性があります。"
+        : "マイクが動いています。キーボードを弾いてみてください。", ecOn ? "warn" : "ok");
+
+      try { await navigator.wakeLock?.request("screen"); } catch (_) {}
+      running = true;
+      startBtn.textContent = "聞き取り中";
+      requestAnimationFrame(frame);
+    } catch (e) {
+      startBtn.disabled = false;
+      setStatus("マイクを使えませんでした：" + (e.message || e.name) + "。設定アプリ → Safari → マイク で許可されているか確認してください。", "warn");
+    }
+  }
+  startBtn.addEventListener("click", start);
+})();
+</script>
+</body>
+</html>
