@@ -134,6 +134,38 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .btns { display: flex; flex-wrap: wrap; gap: 12px; }
 .btn { background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 10px 22px; font-weight: 800; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.danger { color: var(--bad); border-color: var(--bad); }
+
+/* ---- じぶんの きょく ---- */
+.sec { font-weight: 800; font-size: 1.3rem; margin: 6px 0 0; }
+.song { position: relative; cursor: pointer; }
+.song.add { border-style: dashed; justify-content: center; min-height: 110px; color: var(--accent); }
+.song.add .t { font-size: 1.2rem; }
+.editbtn { position: absolute; top: 12px; right: 12px; background: var(--bg); border: 2px solid var(--line); border-radius: 999px; padding: 2px 12px; font-weight: 800; font-size: .85rem; }
+
+/* ---- じさく モード ---- */
+#editor { gap: 8px; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+#editor .bar, #editor .tools, #editor .edmsg, #editor .importbox, #editor .edfoot { margin: 0 16px; }
+#editor .stage { margin: 0 16px; }
+.titlein { flex: 1; min-width: 8em; font: inherit; font-weight: 800; font-size: 1.2rem; padding: 6px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); }
+.muted { color: var(--muted); font-size: .9rem; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.tools .btn { padding: 6px 14px; font-size: .95rem; }
+.tools .grp { display: inline-flex; gap: 4px; }
+.edmsg { min-height: 1.5em; text-align: center; font-weight: 800; color: var(--accent); }
+.edscore { position: absolute; inset: 0; overflow-y: auto; background: var(--surface); border: 2px solid var(--line); border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.edscore .line { min-height: 60px; align-items: center; }
+.edscore .note { width: 60px; height: 60px; font-size: 1.35rem; border-radius: 16px; border: 0; }
+.edscore .note.small { font-size: 1.05rem; }
+.cursor { width: 4px; height: 56px; border-radius: 2px; background: var(--accent); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.importbox { background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 12px 16px; display: grid; gap: 8px; }
+.importbox p { margin: 0; font-size: .95rem; }
+.importbox .head { color: var(--muted); font-size: .9rem; }
+.row2 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.row2 select { font: inherit; font-size: .95rem; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--line); background: var(--bg); color: var(--fg); max-width: 100%; }
+.chk { display: inline-flex; align-items: center; gap: 6px; }
+.edfoot { display: flex; justify-content: flex-end; }
 #calibKeys { margin-top: auto; }
 .calibmark { position: absolute; top: 4px; transform: translateX(-50%); font-size: .75rem; font-weight: 800; color: var(--accent); z-index: 3; white-space: nowrap; }
 .ruler { height: 26px; position: relative; flex-shrink: 0; }
@@ -178,6 +210,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 <section id="select" class="screen">
   <h1>どの きょくを ひく？</h1>
   <div class="songs" id="songList"></div>
+  <h2 class="sec">じぶんで つくった きょく</h2>
+  <div class="songs" id="mySongList"></div>
   <div class="foot">
     <span class="pill"><span class="dot" id="midiDot"></span><span id="midiText">MIDI: しらべています…</span></span>
     <span class="pill"><span class="dot" id="saveDot"></span><span id="saveText">ほぞん: しらべています…</span></span>
@@ -200,6 +234,50 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   </div>
   <div class="ruler" id="calRuler" aria-hidden="true"></div>
   <div class="keys" id="calibKeys"></div>
+</section>
+
+<section id="editor" class="screen" hidden>
+  <div class="bar">
+    <button class="back" id="edBack" type="button">← もどる</button>
+    <input id="edTitle" class="titlein" type="text" placeholder="きょくの なまえ" maxlength="40" aria-label="きょくの なまえ">
+    <span id="edCount" class="muted"></span>
+    <button class="btn" id="edPlay" type="button">▶ ひいてみる</button>
+    <button class="btn primary" id="edSave" type="button">ほぞん</button>
+  </div>
+  <div class="tools">
+    <button class="btn" id="edBs" type="button">⌫ けす</button>
+    <button class="btn" id="edBr" type="button">↵ ぎょうを かえる</button>
+    <button class="btn" id="edUndo" type="button">↶ もとに もどす</button>
+    <span class="grp">
+      <button class="btn" id="edLeft" type="button" aria-label="カーソルを ひだりへ">◀</button>
+      <button class="btn" id="edRight" type="button" aria-label="カーソルを みぎへ">▶</button>
+      <button class="btn" id="edEnd" type="button">さいごへ</button>
+    </span>
+    <span class="grp" id="edShift">
+      <button class="btn" type="button" data-d="-1" aria-label="はんおん さげる">♭ さげる</button>
+      <button class="btn" type="button" data-d="1" aria-label="はんおん あげる">♯ あげる</button>
+    </span>
+    <button class="btn" id="edImport" type="button">📂 MIDI を よみこむ</button>
+    <button class="btn" id="edClear" type="button">ぜんぶ けす</button>
+    <input type="file" id="edFile" accept=".mid,.midi,audio/midi,audio/x-midi" hidden>
+  </div>
+  <div id="importBox" class="importbox" hidden>
+    <div class="row2">
+      <label for="impPart">メロディーの パート</label>
+      <select id="impPart"></select>
+      <label class="chk"><input type="checkbox" id="impToC" checked> C の キーに する</label>
+    </div>
+    <p id="impInfo"></p>
+    <p id="impHead" class="head"></p>
+    <div class="row2">
+      <button class="btn primary" id="impOk" type="button">これで よみこむ</button>
+      <button class="btn" id="impCancel" type="button">やめる</button>
+    </div>
+  </div>
+  <div id="edMsg" class="edmsg" role="status"></div>
+  <div class="stage"><div id="edScore" class="edscore"></div></div>
+  <div class="keys" id="edKeys" aria-label="けんばん"></div>
+  <div class="edfoot"><button class="btn danger" id="edDelete" type="button" hidden>この きょくを けす</button></div>
 </section>
 
 <section id="play" class="screen" hidden>
@@ -270,8 +348,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // ================= バージョン =================
   // 更新するときは、ここと version.json の両方を書きかえる
-  const APP_VERSION = "0.5.0";
-  const APP_DATE = "2026-10-31";
+  const APP_VERSION = "0.6.0";
+  const APP_DATE = "2026-11-01";
   (async () => {
     const dot = $("verDot"), text = $("verText"), btn = $("updateBtn");
     text.textContent = `バージョン ${APP_VERSION}（${APP_DATE}）`;
@@ -685,26 +763,51 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   })();
 
   // ================= きょくえらび =================
+  // じぶんで つくった きょく（localStorage に保存）
+  const mySongs = {
+    KEY: "doremi.songs.v1",
+    all() { try { return JSON.parse(localStorage.getItem(this.KEY) || "[]"); } catch (_) { return []; } },
+    saveAll(list) { try { localStorage.setItem(this.KEY, JSON.stringify(list)); return true; } catch (_) { return false; } },
+    put(song) { const l = this.all(); const i = l.findIndex(s => s.id === song.id); if (i >= 0) l[i] = song; else l.push(song); return this.saveAll(l); },
+    remove(id) { this.saveAll(this.all().filter(s => s.id !== id)); },
+  };
+
+  function songCard(song, custom) {
+    const b = document.createElement("div");
+    b.className = "song"; b.setAttribute("role", "button"); b.tabIndex = 0;
+    const r = store.get(song.id);
+    const first = (song.lines.find(l => l.length) || []).slice(0, 12);
+    const preview = first.map(m => `<span style="background:${colorOf(m)}">${NAMES[pcOf(m)][0]}</span>`).join("");
+    b.innerHTML = `<span class="t"></span><span class="p">${preview}</span><span class="r"></span>`;
+    b.querySelector(".t").textContent = song.title;
+    const count = song.lines.flat().length;
+    b.querySelector(".r").textContent = (r ? `${r.plays}かい ひいた ／ いちばん: まちがい ${r.best}こ` : "まだ ひいていない") + `（${count}おと）`;
+    b.addEventListener("click", () => startSong(song));
+    b.addEventListener("keydown", e => { if (e.key === "Enter") startSong(song); });
+    if (custom) {
+      const ed = document.createElement("button");
+      ed.type = "button"; ed.className = "editbtn"; ed.textContent = "なおす";
+      ed.addEventListener("click", e => { e.stopPropagation(); openEditor(song); });
+      b.appendChild(ed);
+    }
+    return b;
+  }
   function renderList() {
     const list = $("songList"); list.textContent = "";
-    SONGS.forEach(song => {
-      const b = document.createElement("button");
-      b.className = "song"; b.type = "button";
-      const r = store.get(song.id);
-      const preview = song.lines[0].map(m => `<span style="background:${colorOf(m)}">${NAMES[pcOf(m)][0]}</span>`).join("");
-      b.innerHTML = `<span class="t"></span><span class="p">${preview}</span><span class="r"></span>`;
-      b.querySelector(".t").textContent = song.title;
-      b.querySelector(".r").textContent = r ? `${r.plays}かい ひいた ／ いちばん: まちがい ${r.best}こ` : "まだ ひいていない";
-      b.addEventListener("click", () => startSong(song));
-      list.appendChild(b);
-    });
+    SONGS.forEach(s => list.appendChild(songCard(s, false)));
+    const mine = $("mySongList"); mine.textContent = "";
+    mySongs.all().forEach(s => mine.appendChild(songCard(s, true)));
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "song add"; add.innerHTML = '<span class="t">＋ きょくを つくる</span><span class="r">けんばんで ひいたり、MIDI ファイルを よみこんだり できるよ</span>';
+    add.addEventListener("click", () => openEditor(null));
+    mine.appendChild(add);
   }
 
   // ================= えんそう =================
   let song = null, flat = [], els = [], pos = 0, miss = 0, combo = 0, keyEls = new Map(), msgTimer = 0;
   let viewMode = store.pref("view") === "roll" ? "roll" : "score";
 
-  function show(id) { ["select", "play", "done", "calib"].forEach(s => $(s).hidden = s !== id); }
+  function show(id) { ["select", "play", "done", "calib", "editor"].forEach(s => $(s).hidden = s !== id); }
 
   // 画面の鍵盤を、本物のキーボードと同じ大きさで描く。
   // lo〜hi は曲で使う範囲。画面に入る分だけ左右に鍵盤を足す（足した鍵盤は うすく表示）。
@@ -821,7 +924,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
   }
 
-  input.onNoteOn = m => {
+  input.onNoteOn = m => { if (!$("editor").hidden) edNote(m); else playNote(m); };
+  const playNote = m => {
     if ($("play").hidden || pos >= flat.length) return;
     const k = keyEls.get(m);
     const want = flat[pos];
@@ -852,7 +956,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       setMsg(`いまのは「${NAMES[pcOf(m)]}」だよ。つぎは「${NAMES[pcOf(want)]}」`, "bad", 1800);
     }
   };
-  input.onNoteOff = m => { const k = keyEls.get(m); if (k) k.classList.remove("hit"); };
+  input.onNoteOff = m => { const k = keyEls.get(m) || edKeyEls.get(m); if (k) k.classList.remove("hit"); };
 
   function finish() {
     const r = store.record(song.id, miss);
@@ -884,6 +988,252 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   $("backBtn").addEventListener("click", () => { roll.stop(); fx.clear(); renderList(); show("select"); });
   $("againBtn").addEventListener("click", () => startSong(song));
   $("toListBtn").addEventListener("click", () => { fx.clear(); renderList(); show("select"); });
+
+  // ================= じさく モード（きょくを つくる・なおす） =================
+  // 編集中の曲は「音」と「行がわり」の並び。カーソルの位置に音を入れていく。
+  const edKeyEls = new Map();
+  let ed = null;
+  const edSnap = () => { ed.history.push({ tokens: ed.tokens.slice(), cursor: ed.cursor }); if (ed.history.length > 200) ed.history.shift(); };
+
+  function openEditor(song) {
+    const tokens = [];
+    if (song) song.lines.forEach((l, i) => { if (i) tokens.push({ br: true }); l.forEach(m => tokens.push({ m })); });
+    ed = { id: song ? song.id : "my-" + Date.now(), isNew: !song, tokens, cursor: tokens.length, history: [] };
+    $("edTitle").value = song ? song.title : "";
+    $("edDelete").hidden = !song;
+    $("edDelete").textContent = "この きょくを けす"; $("edDelete").dataset.armed = "";
+    $("importBox").hidden = true;
+    show("editor");
+    buildKeys($("edKeys"), edKeyEls, 60, 71);
+    edKeyEls.forEach(k => k.classList.remove("extra"));
+    edRender();
+    setEdMsg("けんばんを ひくと、おとが ふえるよ");
+  }
+
+  function setEdMsg(t) { $("edMsg").textContent = t; }
+
+  function edRender() {
+    const box = $("edScore"); box.textContent = "";
+    let row = document.createElement("div"); row.className = "line"; box.appendChild(row);
+    const cursorEl = () => { const c = document.createElement("span"); c.className = "cursor"; c.id = "edCursor"; return c; };
+    if (ed.cursor === 0) row.appendChild(cursorEl());
+    ed.tokens.forEach((t, i) => {
+      if (t.br) { row = document.createElement("div"); row.className = "line"; box.appendChild(row); }
+      else {
+        const n = document.createElement("button");
+        const name = NAMES[pcOf(t.m)];
+        n.type = "button"; n.className = "note" + (name.length > 1 ? " small" : "");
+        n.textContent = name; n.style.background = colorOf(t.m);
+        n.addEventListener("click", () => { ed.cursor = i + 1; edRender(); });
+        row.appendChild(n);
+      }
+      if (ed.cursor === i + 1) row.appendChild(cursorEl());
+    });
+    const notes = ed.tokens.filter(t => !t.br).length;
+    $("edCount").textContent = `${notes} おと`;
+    const c = $("edCursor"); if (c) c.scrollIntoView({ block: "nearest" });
+  }
+
+  function edNote(m) {
+    if (!ed) return;
+    edSnap();
+    ed.tokens.splice(ed.cursor, 0, { m }); ed.cursor++;
+    const k = edKeyEls.get(m); if (k) k.classList.add("hit");
+    setEdMsg(""); edRender();
+  }
+  $("edKeys").addEventListener("pointerdown", e => {
+    const k = e.target.closest("[data-m]"); if (!k) return;
+    e.preventDefault(); const m = +k.dataset.m; emitOn(m);
+    const up = () => { emitOff(m); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointerup", up);
+  });
+  $("edBack").addEventListener("click", () => { ed = null; renderList(); show("select"); });
+  $("edBs").addEventListener("click", () => {
+    if (ed.cursor === 0) return;
+    edSnap(); ed.tokens.splice(ed.cursor - 1, 1); ed.cursor--; edRender();
+  });
+  $("edBr").addEventListener("click", () => { edSnap(); ed.tokens.splice(ed.cursor, 0, { br: true }); ed.cursor++; edRender(); });
+  $("edUndo").addEventListener("click", () => {
+    const h = ed.history.pop(); if (!h) return;
+    ed.tokens = h.tokens; ed.cursor = h.cursor; edRender();
+  });
+  $("edLeft").addEventListener("click", () => { if (ed.cursor > 0) { ed.cursor--; edRender(); } });
+  $("edRight").addEventListener("click", () => { if (ed.cursor < ed.tokens.length) { ed.cursor++; edRender(); } });
+  $("edEnd").addEventListener("click", () => { ed.cursor = ed.tokens.length; edRender(); });
+  $("edShift").addEventListener("click", e => {
+    // 選んでいる音（カーソルの ひだり）を 半音 上げ下げ
+    const d = +e.target.closest("button").dataset.d || 0;
+    const t = ed.tokens[ed.cursor - 1];
+    if (!t || t.br) return;
+    edSnap(); t.m += d; edRender();
+  });
+
+  function edLines() {
+    const lines = [[]];
+    ed.tokens.forEach(t => { if (t.br) lines.push([]); else lines[lines.length - 1].push(t.m); });
+    return lines.filter(l => l.length);
+  }
+  $("edSave").addEventListener("click", () => {
+    const lines = edLines();
+    if (!lines.length) { setEdMsg("おとが まだ ないよ"); return; }
+    const title = $("edTitle").value.trim() || "じぶんの きょく";
+    const ok = mySongs.put({ id: ed.id, title, lines, custom: true, updated: Date.now() });
+    if (!ok) { setEdMsg("ほぞん できませんでした（ようりょうが いっぱいかも）"); return; }
+    ed.isNew = false; $("edDelete").hidden = false;
+    setEdMsg("ほぞん したよ！");
+  });
+  $("edPlay").addEventListener("click", () => {
+    const lines = edLines();
+    if (!lines.length) { setEdMsg("おとが まだ ないよ"); return; }
+    startSong({ id: ed.id, title: $("edTitle").value.trim() || "じぶんの きょく", lines });
+  });
+  $("edDelete").addEventListener("click", e => {
+    const b = e.currentTarget;
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "ほんとうに けす？ もういちど おしてね"; setTimeout(() => { if (b.dataset.armed) { b.dataset.armed = ""; b.textContent = "この きょくを けす"; } }, 4000); return; }
+    mySongs.remove(ed.id); ed = null; renderList(); show("select");
+  });
+  $("edClear").addEventListener("click", () => { if (!ed.tokens.length) return; edSnap(); ed.tokens = []; ed.cursor = 0; edRender(); setEdMsg("ぜんぶ けしたよ（「もとに もどす」で もどせます）"); });
+
+  // ---------- MIDI ファイルの よみこみ ----------
+  function parseMidi(buf) {
+    const d = new DataView(buf); let p = 0;
+    const str = n => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCharCode(d.getUint8(p++)); return s; };
+    const u32 = () => { const v = d.getUint32(p); p += 4; return v; };
+    const u16 = () => { const v = d.getUint16(p); p += 2; return v; };
+    const vlq = () => { let v = 0, b; do { b = d.getUint8(p++); v = (v << 7) | (b & 0x7f); } while (b & 0x80); return v; };
+    if (str(4) !== "MThd") throw new Error("MIDI ファイルでは ありません");
+    const hl = u32(); u16(); const nt = u16(), div = u16(); p += hl - 6;
+    if (div & 0x8000) throw new Error("この じかんの かたちの MIDI には たいおう していません");
+    const parts = new Map();
+    for (let t = 0; t < nt && p + 8 <= d.byteLength; t++) {
+      const id = str(4), len = u32(), end = Math.min(p + len, d.byteLength);
+      if (id !== "MTrk") { p = end; continue; }
+      let tick = 0, rs = 0, name = ""; const open = {};
+      while (p < end) {
+        tick += vlq();
+        let st = d.getUint8(p);
+        if (st & 0x80) p++; else st = rs;
+        if (st === 0xff) {
+          const type = d.getUint8(p++), l = vlq();
+          if (type === 3 && !name) { try { name = new TextDecoder().decode(new Uint8Array(buf, p, l)).replace(/\0/g, "").trim(); } catch (_) {} }
+          p += l; continue;
+        }
+        if (st === 0xf0 || st === 0xf7) { p += vlq(); continue; }
+        rs = st;
+        const cmd = st & 0xf0, ch = st & 15;
+        const a = d.getUint8(p++), b = (cmd === 0xc0 || cmd === 0xd0) ? 0 : d.getUint8(p++);
+        if (ch === 9) continue; // ドラムは のぞく
+        const key = t + ":" + ch;
+        if (!parts.has(key)) parts.set(key, { track: t, ch, name: "", notes: [] });
+        const part = parts.get(key);
+        if (cmd === 0x90 && b > 0) (open[ch * 128 + a] = open[ch * 128 + a] || []).push({ m: a, s: tick });
+        else if (cmd === 0x80 || (cmd === 0x90 && b === 0)) {
+          const q = open[ch * 128 + a];
+          if (q && q.length) { const n = q.shift(); n.e = tick; part.notes.push(n); }
+        }
+      }
+      parts.forEach(pt => { if (pt.track === t && !pt.name) pt.name = name; });
+      p = end;
+    }
+    return { div, parts: [...parts.values()].filter(pt => pt.notes.length) };
+  }
+
+  // 同時に鳴っている音は いちばん高い音だけ残す（メロディーは ふつう いちばん上）
+  function melodyOf(notes, div) {
+    const sorted = notes.slice().sort((a, b) => a.s - b.s || b.m - a.m);
+    const out = [];
+    const win = Math.max(1, div / 16);
+    sorted.forEach(n => {
+      const last = out[out.length - 1];
+      if (last && n.s - last.s < win) { if (n.m > last.m) out[out.length - 1] = n; return; }
+      out.push(n);
+    });
+    return out;
+  }
+  // キーを推定（クルムハンスルの調性プロファイル）
+  const KEY_NAMES = ["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+  function detectKey(notes) {
+    const MAJ = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+    const MIN = [6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+    const h = new Array(12).fill(0);
+    notes.forEach(n => h[pcOf(n.m)] += Math.max(1, (n.e || n.s + 1) - n.s));
+    const corr = (prof, tonic) => {
+      const xs = h, ys = h.map((_, i) => prof[(i - tonic + 12) % 12]);
+      const mx = xs.reduce((a, b) => a + b) / 12, my = ys.reduce((a, b) => a + b) / 12;
+      let num = 0, dx = 0, dy = 0;
+      for (let i = 0; i < 12; i++) { num += (xs[i] - mx) * (ys[i] - my); dx += (xs[i] - mx) ** 2; dy += (ys[i] - my) ** 2; }
+      return num / Math.sqrt(dx * dy || 1);
+    };
+    let best = { r: -2 };
+    for (let t = 0; t < 12; t++) {
+      const a = corr(MAJ, t); if (a > best.r) best = { r: a, tonic: t, minor: false };
+      const b = corr(MIN, t); if (b > best.r) best = { r: b, tonic: t, minor: true };
+    }
+    return best;
+  }
+  function toTokens(mel, div, toC) {
+    let shift = 0, key = detectKey(mel);
+    if (toC) { shift = ((key.minor ? 9 : 0) - key.tonic + 12) % 12; if (shift > 6) shift -= 12; }
+    const ms = mel.map(n => n.m + shift).sort((a, b) => a - b);
+    const med = ms[ms.length >> 1];
+    let oct = 0; while (med + oct > 72) oct -= 12; while (med + oct < 60) oct += 12;
+    const tokens = []; let lineLen = 0;
+    mel.forEach((n, i) => {
+      if (i > 0) {
+        const prev = mel[i - 1], gap = n.s - (prev.e || prev.s);
+        if ((gap >= div / 2 && lineLen >= 4) || lineLen >= 16 || (gap >= div / 4 && lineLen >= 10)) { tokens.push({ br: true }); lineLen = 0; }
+      }
+      tokens.push({ m: n.m + shift + oct }); lineLen++;
+    });
+    return { tokens, key, shift };
+  }
+
+  let imported = null;
+  $("edImport").addEventListener("click", () => $("edFile").click());
+  $("edFile").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    try {
+      const midi = parseMidi(await f.arrayBuffer());
+      if (!midi.parts.length) throw new Error("おとが みつかりませんでした");
+      imported = { midi, name: f.name.replace(/\.(mid|midi)$/i, "") };
+      const sel = $("impPart"); sel.textContent = "";
+      const max = Math.max(...midi.parts.map(p => p.notes.length));
+      let bestI = 0, bestAvg = -1;
+      midi.parts.forEach((p, i) => {
+        const avg = p.notes.reduce((a, n) => a + n.m, 0) / p.notes.length;
+        if (p.notes.length >= Math.min(8, max) && p.notes.length >= max * 0.15 && avg > bestAvg) { bestAvg = avg; bestI = i; }
+        const o = document.createElement("option");
+        o.value = i; o.textContent = `トラック ${p.track + 1}${p.name ? "「" + p.name + "」" : ""}（チャンネル ${p.ch + 1}・${p.notes.length}おと）`;
+        sel.appendChild(o);
+      });
+      sel.value = bestI;
+      $("importBox").hidden = false;
+      impPreview();
+    } catch (err) { setEdMsg("よみこめませんでした：" + err.message); }
+  });
+  function impPreview() {
+    if (!imported) return;
+    const part = imported.midi.parts[+$("impPart").value];
+    const mel = melodyOf(part.notes, imported.midi.div);
+    const r = toTokens(mel, imported.midi.div, $("impToC").checked);
+    const kname = KEY_NAMES[r.key.tonic] + (r.key.minor ? " マイナー" : " メジャー");
+    $("impInfo").textContent = `メロディー ${mel.length}おと ／ もとの キー: ${kname}` + ($("impToC").checked ? `（${r.shift >= 0 ? "+" : ""}${r.shift} はんおん して C に しました）` : "");
+    $("impHead").textContent = r.tokens.filter(t => !t.br).slice(0, 24).map(t => NAMES[pcOf(t.m)]).join(" ") + " …";
+    imported.result = r;
+  }
+  $("impPart").addEventListener("change", impPreview);
+  $("impToC").addEventListener("change", impPreview);
+  $("impCancel").addEventListener("click", () => { $("importBox").hidden = true; imported = null; });
+  $("impOk").addEventListener("click", () => {
+    if (!imported || !imported.result) return;
+    edSnap();
+    ed.tokens = imported.result.tokens; ed.cursor = ed.tokens.length;
+    if (!$("edTitle").value.trim()) $("edTitle").value = imported.name;
+    $("importBox").hidden = true; imported = null;
+    edRender();
+    setEdMsg("よみこんだよ。まちがって いる ところは なおしてから「ほぞん」してね");
+  });
 
   renderList();
 })();
