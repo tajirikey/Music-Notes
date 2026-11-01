@@ -135,6 +135,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .btn { background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 10px 22px; font-weight: 800; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.danger { color: var(--bad); border-color: var(--bad); }
+#backup { overflow-y: auto; }
+.bk-inner { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.bk-inner h1 { font-weight: 800; font-size: 1.6rem; margin: 8px 0 0; }
+.bk-inner p { margin: 0; }
+.bk-inner textarea { font-family: ui-monospace, Menlo, monospace; font-size: .8rem; width: 100%; padding: 10px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); -webkit-user-select: text; user-select: text; }
+.toast { position: fixed; left: 50%; bottom: calc(170px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 14px; background: var(--fg); color: var(--bg); border-radius: 999px; padding: 10px 12px 10px 22px; font-weight: 800; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.toast button { background: var(--gold); color: #2a1f00; border: 0; border-radius: 999px; padding: 6px 16px; font-weight: 800; }
+.note { -webkit-touch-callout: none; touch-action: manipulation; }
 
 /* ---- じぶんの きょく ---- */
 .sec { font-weight: 800; font-size: 1.3rem; margin: 6px 0 0; }
@@ -218,6 +227,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     <span class="pill"><span class="dot" id="verDot"></span><span id="verText"></span></span>
     <button class="update" id="updateBtn" type="button" hidden>あたらしい ばんに する</button>
     <button class="update" id="calibBtn" type="button">けんばんの おおきさ</button>
+    <button class="update" id="backupBtn" type="button">バックアップ</button>
   </div>
 </section>
 
@@ -234,6 +244,26 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   </div>
   <div class="ruler" id="calRuler" aria-hidden="true"></div>
   <div class="keys" id="calibKeys"></div>
+</section>
+
+<section id="backup" class="screen" hidden>
+  <div class="inner bk-inner">
+    <h1>バックアップ</h1>
+    <p>つくった きょく・きろく・けんばんの せってい を もじに して コピー できます。メモアプリ などに はりつけて とっておくと、もし きえても もとに もどせます。</p>
+    <div class="btns">
+      <button class="btn primary" id="bkCopy" type="button">コピーする</button>
+      <span id="bkCopyMsg" class="muted"></span>
+    </div>
+    <textarea id="bkOut" readonly rows="5" aria-label="バックアップの もじ"></textarea>
+    <h2 class="sec">もとに もどす</h2>
+    <p>とっておいた もじを ここに はりつけて「よみこむ」を おしてね。いまの データは おきかわります。</p>
+    <textarea id="bkIn" rows="5" aria-label="よみこむ もじ"></textarea>
+    <div class="btns">
+      <button class="btn" id="bkLoad" type="button">よみこむ</button>
+      <button class="btn" id="bkBack" type="button">← もどる</button>
+      <span id="bkMsg" class="muted"></span>
+    </div>
+  </div>
 </section>
 
 <section id="editor" class="screen" hidden>
@@ -253,10 +283,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       <button class="btn" id="edRight" type="button" aria-label="カーソルを みぎへ">▶</button>
       <button class="btn" id="edEnd" type="button">さいごへ</button>
     </span>
-    <span class="grp" id="edShift">
-      <button class="btn" type="button" data-d="-1" aria-label="はんおん さげる">♭ さげる</button>
-      <button class="btn" type="button" data-d="1" aria-label="はんおん あげる">♯ あげる</button>
-    </span>
+
     <button class="btn" id="edImport" type="button">📂 MIDI を よみこむ</button>
     <button class="btn" id="edClear" type="button">ぜんぶ けす</button>
     <input type="file" id="edFile" accept=".mid,.midi,audio/midi,audio/x-midi" hidden>
@@ -298,6 +325,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     <canvas id="roll" hidden></canvas>
   </div>
   <div class="keys" id="keys" aria-label="けんばん"></div>
+  <div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button type="button" id="toastUndo">もとに もどす</button></div>
   <p id="scaleNote" hidden>きょくが ながいので、けんばんを すこし ちいさく しています</p>
 </section>
 
@@ -348,7 +376,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // ================= バージョン =================
   // 更新するときは、ここと version.json の両方を書きかえる
-  const APP_VERSION = "0.6.0";
+  const APP_VERSION = "0.7.0";
   const APP_DATE = "2026-11-01";
   (async () => {
     const dot = $("verDot"), text = $("verText"), btn = $("updateBtn");
@@ -772,6 +800,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     remove(id) { this.saveAll(this.all().filter(s => s.id !== id)); },
   };
 
+  // プリセット曲で消した音は、元の曲とは別に保存しておく（「もとに もどす」で元どおり）
+  const presetEdits = {
+    KEY: "doremi.presetEdits.v1",
+    all() { try { return JSON.parse(localStorage.getItem(this.KEY) || "{}"); } catch (_) { return {}; } },
+    set(id, lines) { const d = this.all(); d[id] = lines; try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (_) {} },
+    remove(id) { const d = this.all(); delete d[id]; try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (_) {} },
+  };
+  const presetSong = s => { const e = presetEdits.all()[s.id]; return e ? { ...s, lines: e, edited: true } : s; };
+
   function songCard(song, custom) {
     const b = document.createElement("div");
     b.className = "song"; b.setAttribute("role", "button"); b.tabIndex = 0;
@@ -784,6 +821,16 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     b.querySelector(".r").textContent = (r ? `${r.plays}かい ひいた ／ いちばん: まちがい ${r.best}こ` : "まだ ひいていない") + `（${count}おと）`;
     b.addEventListener("click", () => startSong(song));
     b.addEventListener("keydown", e => { if (e.key === "Enter") startSong(song); });
+    if (song.edited) {
+      const rb = document.createElement("button");
+      rb.type = "button"; rb.className = "editbtn"; rb.textContent = "もとに もどす";
+      rb.addEventListener("click", e => {
+        e.stopPropagation();
+        if (!rb.dataset.armed) { rb.dataset.armed = "1"; rb.textContent = "もういちど おすと もどるよ"; setTimeout(() => { rb.dataset.armed = ""; rb.textContent = "もとに もどす"; }, 4000); return; }
+        presetEdits.remove(song.id); renderList();
+      });
+      b.appendChild(rb);
+    }
     if (custom) {
       const ed = document.createElement("button");
       ed.type = "button"; ed.className = "editbtn"; ed.textContent = "なおす";
@@ -794,7 +841,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
   function renderList() {
     const list = $("songList"); list.textContent = "";
-    SONGS.forEach(s => list.appendChild(songCard(s, false)));
+    SONGS.forEach(s => list.appendChild(songCard(presetSong(s), false)));
     const mine = $("mySongList"); mine.textContent = "";
     mySongs.all().forEach(s => mine.appendChild(songCard(s, true)));
     const add = document.createElement("button");
@@ -807,7 +854,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   let song = null, flat = [], els = [], pos = 0, miss = 0, combo = 0, keyEls = new Map(), msgTimer = 0;
   let viewMode = store.pref("view") === "roll" ? "roll" : "score";
 
-  function show(id) { ["select", "play", "done", "calib", "editor"].forEach(s => $(s).hidden = s !== id); }
+  function show(id) { ["select", "play", "done", "calib", "editor", "backup"].forEach(s => $(s).hidden = s !== id); }
 
   // 画面の鍵盤を、本物のキーボードと同じ大きさで描く。
   // lo〜hi は曲で使う範囲。画面に入る分だけ左右に鍵盤を足す（足した鍵盤は うすく表示）。
@@ -877,31 +924,84 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   $("viewScore").addEventListener("click", () => setView("score"));
   $("viewRoll").addEventListener("click", () => setView("roll"));
 
-  function startSong(s) {
-    song = s; flat = s.lines.flat(); pos = 0; miss = 0; combo = 0; els = [];
-    fx.clear();
-    $("playTitle").textContent = s.title;
-    const score = $("score"); score.textContent = "";
-    s.lines.forEach(line => {
-      const row = document.createElement("div"); row.className = "line";
-      line.forEach(m => {
-        const n = document.createElement("div");
-        const name = NAMES[pcOf(m)];
-        n.className = "note" + (name.length > 1 ? " small" : "");
-        n.textContent = name; n.style.background = colorOf(m);
-        row.appendChild(n); els.push(n);
-      });
-      score.appendChild(row);
+  // 長押しを検出する（ふつうのタップとは区別する）
+  function onLongPress(el, fn, ms = 600) {
+    let timer = 0, sx = 0, sy = 0;
+    const cancel = () => clearTimeout(timer);
+    el.addEventListener("pointerdown", e => {
+      sx = e.clientX; sy = e.clientY; el.dataset.long = "";
+      timer = setTimeout(() => { el.dataset.long = "1"; fn(); }, ms);
     });
+    el.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 12) cancel(); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(ev => el.addEventListener(ev, cancel));
+    el.addEventListener("contextmenu", e => e.preventDefault());
+  }
+
+  function startSong(s) {
+    song = { ...s, lines: s.lines.map(l => l.slice()) };
+    flat = song.lines.flat(); pos = 0; miss = 0; combo = 0;
+    fx.clear(); hideToast();
+    $("playTitle").textContent = s.title;
+    renderScore();
     songLo = Math.min(...flat); songHi = Math.max(...flat);
     setMsg("", "");
     show("play");
     rebuildPlayKeys();
-    score.scrollTop = 0;
+    $("score").scrollTop = 0;
     roll.reset();
     setView(viewMode);
     update();
   }
+
+  function renderScore() {
+    const score = $("score"), top = score.scrollTop; score.textContent = ""; els = [];
+    let i = 0;
+    song.lines.forEach(line => {
+      const row = document.createElement("div"); row.className = "line";
+      line.forEach(m => {
+        const n = document.createElement("div");
+        const name = NAMES[pcOf(m)], idx = i++;
+        n.className = "note" + (name.length > 1 ? " small" : "");
+        n.textContent = name; n.style.background = colorOf(m);
+        onLongPress(n, () => deleteNoteAt(idx));
+        row.appendChild(n); els.push(n);
+      });
+      score.appendChild(row);
+    });
+    score.scrollTop = top;
+  }
+
+  // 演奏中に 音を長押しすると その音を消す（プリセットの曲も じぶんの曲も 保存される）
+  let undoState = null, toastTimer = 0;
+  function deleteNoteAt(i) {
+    if (i >= flat.length) return;
+    undoState = { lines: song.lines.map(l => l.slice()), pos };
+    let k = i, li = 0;
+    while (k >= song.lines[li].length) { k -= song.lines[li].length; li++; }
+    song.lines[li].splice(k, 1);
+    song.lines = song.lines.filter(l => l.length);
+    if (i < pos) pos--;
+    flat = song.lines.flat();
+    saveSongLines(song);
+    if (!flat.length) { hideToast(); renderList(); show("select"); return; }
+    renderScore(); update();
+    showToast(`「${NAMES[pcOf(undoState.lines.flat()[i])]}」を けしたよ`);
+    if (pos >= flat.length) setTimeout(finish, 450);
+  }
+  function saveSongLines(s) {
+    if (SONGS.some(p => p.id === s.id)) presetEdits.set(s.id, s.lines);
+    else { const mine = mySongs.all().find(m => m.id === s.id); if (mine) mySongs.put({ ...mine, lines: s.lines, updated: Date.now() }); }
+  }
+  function showToast(text) {
+    $("toastText").textContent = text; $("toast").hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 5000);
+  }
+  function hideToast() { $("toast").hidden = true; }
+  $("toastUndo").addEventListener("click", () => {
+    if (!undoState) return;
+    song.lines = undoState.lines; pos = undoState.pos; flat = song.lines.flat(); undoState = null;
+    saveSongLines(song); renderScore(); update(); hideToast();
+  });
 
   function setMsg(t, kind, ms) {
     const m = $("msg"); m.textContent = t; m.className = kind || "";
@@ -1007,7 +1107,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     buildKeys($("edKeys"), edKeyEls, 60, 71);
     edKeyEls.forEach(k => k.classList.remove("extra"));
     edRender();
-    setEdMsg("けんばんを ひくと、おとが ふえるよ");
+    setEdMsg("けんばんを ひくと、おとが ふえるよ。おとを ながおしすると けせるよ");
   }
 
   function setEdMsg(t) { $("edMsg").textContent = t; }
@@ -1024,7 +1124,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         const name = NAMES[pcOf(t.m)];
         n.type = "button"; n.className = "note" + (name.length > 1 ? " small" : "");
         n.textContent = name; n.style.background = colorOf(t.m);
-        n.addEventListener("click", () => { ed.cursor = i + 1; edRender(); });
+        n.addEventListener("click", () => { if (n.dataset.long) return; ed.cursor = i + 1; edRender(); });
+        onLongPress(n, () => { edSnap(); ed.tokens.splice(i, 1); if (ed.cursor > i) ed.cursor--; edRender(); setEdMsg("けしたよ（「もとに もどす」で もどせます）"); });
         row.appendChild(n);
       }
       if (ed.cursor === i + 1) row.appendChild(cursorEl());
@@ -1060,14 +1161,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   $("edLeft").addEventListener("click", () => { if (ed.cursor > 0) { ed.cursor--; edRender(); } });
   $("edRight").addEventListener("click", () => { if (ed.cursor < ed.tokens.length) { ed.cursor++; edRender(); } });
   $("edEnd").addEventListener("click", () => { ed.cursor = ed.tokens.length; edRender(); });
-  $("edShift").addEventListener("click", e => {
-    // 選んでいる音（カーソルの ひだり）を 半音 上げ下げ
-    const d = +e.target.closest("button").dataset.d || 0;
-    const t = ed.tokens[ed.cursor - 1];
-    if (!t || t.br) return;
-    edSnap(); t.m += d; edRender();
-  });
-
   function edLines() {
     const lines = [[]];
     ed.tokens.forEach(t => { if (t.br) lines.push([]); else lines[lines.length - 1].push(t.m); });
@@ -1234,6 +1327,36 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     edRender();
     setEdMsg("よみこんだよ。まちがって いる ところは なおしてから「ほぞん」してね");
   });
+
+  // ================= バックアップ =================
+  // "doremi." で始まる保存データを まとめて 文字にする
+  function exportData() {
+    const data = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith("doremi.")) data[k] = localStorage.getItem(k); } } catch (_) {}
+    return JSON.stringify({ app: "doremi", v: 1, at: new Date().toISOString(), data });
+  }
+  $("backupBtn").addEventListener("click", () => {
+    $("bkOut").value = exportData(); $("bkIn").value = ""; $("bkMsg").textContent = ""; $("bkCopyMsg").textContent = "";
+    show("backup");
+  });
+  $("bkCopy").addEventListener("click", async () => {
+    const txt = $("bkOut").value;
+    try { await navigator.clipboard.writeText(txt); $("bkCopyMsg").textContent = "コピー したよ"; }
+    catch (_) { const o = $("bkOut"); o.focus(); o.select(); $("bkCopyMsg").textContent = "もじを えらんだので、「コピー」を おしてね"; }
+  });
+  $("bkLoad").addEventListener("click", e => {
+    const b = e.currentTarget;
+    let obj;
+    try { obj = JSON.parse($("bkIn").value.trim()); if (obj.app !== "doremi" || !obj.data) throw 0; }
+    catch (_) { $("bkMsg").textContent = "バックアップの もじでは ないみたい"; return; }
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "ほんとうに よみこむ？"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "よみこむ"; }, 4000); return; }
+    b.dataset.armed = ""; b.textContent = "よみこむ";
+    try { Object.entries(obj.data).forEach(([k, v]) => { if (k.startsWith("doremi.")) localStorage.setItem(k, v); }); }
+    catch (_) { $("bkMsg").textContent = "よみこめませんでした"; return; }
+    $("bkMsg").textContent = "よみこんだよ。いちど ページを ひらきなおすと すべて はんえい されます";
+    $("bkOut").value = exportData();
+  });
+  $("bkBack").addEventListener("click", () => { renderList(); show("select"); });
 
   renderList();
 })();
