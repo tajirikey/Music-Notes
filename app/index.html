@@ -95,6 +95,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   text-shadow: 0 1px 2px rgba(0,0,0,.2);
 }
 .note.small { font-size: 1.35rem; }
+.note .oct { position: absolute; left: 0; right: 0; text-align: center; font-size: .9rem; line-height: 1; letter-spacing: -.1em; }
+.note.hi .oct { top: 5px; }
+.note.lo .oct { bottom: 5px; }
+.note.hi > span:first-child { transform: translateY(5px); }
+.note.lo > span:first-child { transform: translateY(-5px); }
+.note.hi { box-shadow: inset 0 6px 0 rgba(255,255,255,.35); }
+.note.lo { box-shadow: inset 0 -6px 0 rgba(0,0,0,.22); }
+.note.now.hi, .note.now.lo { box-shadow: 0 0 0 5px var(--surface), 0 0 0 9px var(--fg); }
+.breath { align-self: flex-start; font-weight: 800; font-size: 1.1rem; color: var(--muted); margin-left: -2px; }
+.fin { align-self: stretch; width: 10px; margin-left: 6px; border-left: 2px solid var(--fg); border-right: 5px solid var(--fg); }
+.wk.mid::before { content: ""; position: absolute; bottom: 34px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--accent); }
 .note.done { opacity: .28; }
 .note.done::after { content: "✓"; position: absolute; right: 4px; top: 0; font-size: .9rem; }
 .note.now { transform: scale(1.14); box-shadow: 0 0 0 5px var(--surface), 0 0 0 9px var(--fg); animation: bob 1s ease-in-out infinite; z-index: 1; }
@@ -228,6 +239,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     <button class="update" id="updateBtn" type="button" hidden>あたらしい ばんに する</button>
     <button class="update" id="calibBtn" type="button">けんばんの おおきさ</button>
     <button class="update" id="backupBtn" type="button">バックアップ</button>
+    <button class="update" id="strictBtn" type="button"></button>
   </div>
 </section>
 
@@ -369,6 +381,23 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const hexOf = m => cssVar(COLORS[pcOf(m)] || "--nsharp");
   const isBlack = m => [1,3,6,8,10].includes(pcOf(m));
+  // オクターブの しるし：曲の中で いちばん多い オクターブを「ふつうの高さ」とし、それより高い音に ↑、低い音に ↓
+  const octOfM = m => Math.floor(m / 12) - 1;
+  function baseOctave(ms) {
+    const c = {}; ms.forEach(m => c[octOfM(m)] = (c[octOfM(m)] || 0) + 1);
+    let best = 4, bn = -1;
+    Object.keys(c).forEach(k => { const o = +k; if (c[k] > bn || (c[k] === bn && Math.abs(o - 4) < Math.abs(best - 4))) { bn = c[k]; best = o; } });
+    return best;
+  }
+  const octMark = (m, base) => { const d = octOfM(m) - base; return d > 0 ? "↑".repeat(d) : d < 0 ? "↓".repeat(-d) : ""; };
+  function fillNote(n, m, base) {
+    const name = NAMES[pcOf(m)], mk = octMark(m, base);
+    n.className = "note" + (name.length > 1 ? " small" : "") + (mk ? (mk[0] === "↑" ? " hi" : " lo") : "");
+    n.style.background = colorOf(m); n.textContent = "";
+    const s = document.createElement("span"); s.textContent = name; n.appendChild(s);
+    if (mk) { const o = document.createElement("span"); o.className = "oct"; o.textContent = mk; n.appendChild(o); }
+    n.setAttribute("aria-label", name + (mk ? (mk[0] === "↑" ? " たかい" : " ひくい") : ""));
+  }
   const $ = id => document.getElementById(id);
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const RAINBOW = ["#ff4d5e","#ff922b","#ffd43b","#51cf66","#22b8e6","#4c6ef5","#b05cf0","#ff8cc6"];
@@ -376,8 +405,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // ================= バージョン =================
   // 更新するときは、ここと version.json の両方を書きかえる
-  const APP_VERSION = "0.7.0";
-  const APP_DATE = "2026-11-01";
+  const APP_VERSION = "0.8.0";
+  const APP_DATE = "2026-11-02";
   (async () => {
     const dot = $("verDot"), text = $("verText"), btn = $("updateBtn");
     text.textContent = `バージョン ${APP_VERSION}（${APP_DATE}）`;
@@ -756,11 +785,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         grad.addColorStop(0, "#ffffff"); grad.addColorStop(0.18, col); grad.addColorStop(1, col);
         g.fillStyle = grad; rr(x, r.y, r.w, r.h, Math.min(18, r.h / 2.4)); g.fill();
         if (isNow) { g.lineWidth = 4; g.strokeStyle = "#ffffff"; g.stroke(); }
-        const name = NAMES[pcOf(r.m)];
+        const name = NAMES[pcOf(r.m)], mk = octMark(r.m, songBase);
+        const fs = Math.min(r.h * (mk ? 0.42 : 0.5), r.w * (name.length > 1 ? 0.36 : 0.5));
         g.fillStyle = "#ffffff"; g.textAlign = "center"; g.textBaseline = "middle";
-        g.font = `800 ${Math.min(r.h * 0.5, r.w * (name.length > 1 ? 0.36 : 0.5))}px ${FONT}`;
         g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 4;
-        g.fillText(name, x + r.w / 2, r.cy + 2);
+        const up = mk && mk[0] === "↑";
+        g.font = `800 ${fs}px ${FONT}`;
+        g.fillText(name, x + r.w / 2, r.cy + 2 + (mk ? (up ? r.h * 0.12 : -r.h * 0.12) : 0));
+        if (mk) {
+          g.font = `800 ${r.h * 0.3}px ${FONT}`;
+          g.fillText(mk, x + r.w / 2, up ? r.y + r.h * 0.2 : r.y + r.h * 0.8);
+        }
         g.shadowBlur = 0;
       }
       g.globalAlpha = 1;
@@ -851,6 +886,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
 
   // ================= えんそう =================
+  let songBase = 4;
   let song = null, flat = [], els = [], pos = 0, miss = 0, combo = 0, keyEls = new Map(), msgTimer = 0;
   let viewMode = store.pref("view") === "roll" ? "roll" : "score";
 
@@ -882,7 +918,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const inSong = m => m >= lo && m <= hi;
     whites.forEach((m, i) => {
       const k = document.createElement("div");
-      k.className = "wk" + (inSong(m) ? "" : " extra"); k.textContent = NAMES[pcOf(m)];
+      k.className = "wk" + (inSong(m) ? "" : " extra") + (m === 60 ? " mid" : ""); k.textContent = NAMES[pcOf(m)];
       k.style.left = (off + i * pitch + gap / 2) + "px"; k.style.width = Math.max(1, pitch - gap) + "px";
       k.dataset.m = m; wrap.appendChild(k); map.set(m, k);
     });
@@ -940,6 +976,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function startSong(s) {
     song = { ...s, lines: s.lines.map(l => l.slice()) };
     flat = song.lines.flat(); pos = 0; miss = 0; combo = 0;
+    songBase = baseOctave(flat);
     fx.clear(); hideToast();
     $("playTitle").textContent = s.title;
     renderScore();
@@ -956,16 +993,21 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function renderScore() {
     const score = $("score"), top = score.scrollTop; score.textContent = ""; els = [];
     let i = 0;
-    song.lines.forEach(line => {
+    song.lines.forEach((line, li) => {
       const row = document.createElement("div"); row.className = "line";
       line.forEach(m => {
         const n = document.createElement("div");
-        const name = NAMES[pcOf(m)], idx = i++;
-        n.className = "note" + (name.length > 1 ? " small" : "");
-        n.textContent = name; n.style.background = colorOf(m);
+        const idx = i++;
+        fillNote(n, m, songBase);
         onLongPress(n, () => deleteNoteAt(idx));
         row.appendChild(n); els.push(n);
       });
+      // 行の おわりに ブレス記号、曲の おわりに 終止線
+      const end = document.createElement("span");
+      end.className = li === song.lines.length - 1 ? "fin" : "breath";
+      end.textContent = li === song.lines.length - 1 ? "" : "V";
+      end.setAttribute("aria-hidden", "true");
+      row.appendChild(end);
       score.appendChild(row);
     });
     score.scrollTop = top;
@@ -1029,8 +1071,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if ($("play").hidden || pos >= flat.length) return;
     const k = keyEls.get(m);
     const want = flat[pos];
-    // オクターブは くべつしない（ドなら どの ドでも OK）
-    if (pcOf(m) === pcOf(want)) {
+    // ふつうは オクターブを くべつしない（ドなら どの ドでも OK）。「きびしく」の ときは 高さも 見る
+    const samePc = pcOf(m) === pcOf(want);
+    if (strictOct ? m === want : samePc) {
       if (k) k.classList.add("hit");
       combo++;
       // エフェクトの位置
@@ -1053,7 +1096,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       if (k) { k.classList.add("miss"); setTimeout(() => k.classList.remove("miss"), 300); const kr = k.getBoundingClientRect(); fx.miss(kr.left + kr.width / 2, kr.top + 20); }
       if (viewMode === "roll") roll.wrong(m);
       else { const cur = els[pos]; cur.classList.remove("shake"); void cur.offsetWidth; cur.classList.add("shake"); setTimeout(() => cur.classList.remove("shake"), 400); }
-      setMsg(`いまのは「${NAMES[pcOf(m)]}」だよ。つぎは「${NAMES[pcOf(want)]}」`, "bad", 1800);
+      if (samePc) setMsg(`おしい！ ${m < want ? "もっと うえ ↑" : "もっと した ↓"} の「${NAMES[pcOf(want)]}」だよ`, "bad", 1800);
+      else setMsg(`いまのは「${NAMES[pcOf(m)]}」だよ。つぎは「${NAMES[pcOf(want)]}」`, "bad", 1800);
     }
   };
   input.onNoteOff = m => { const k = keyEls.get(m) || edKeyEls.get(m); if (k) k.classList.remove("hit"); };
@@ -1117,13 +1161,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     let row = document.createElement("div"); row.className = "line"; box.appendChild(row);
     const cursorEl = () => { const c = document.createElement("span"); c.className = "cursor"; c.id = "edCursor"; return c; };
     if (ed.cursor === 0) row.appendChild(cursorEl());
+    const edBase = baseOctave(ed.tokens.filter(t => !t.br).map(t => t.m));
     ed.tokens.forEach((t, i) => {
       if (t.br) { row = document.createElement("div"); row.className = "line"; box.appendChild(row); }
       else {
         const n = document.createElement("button");
-        const name = NAMES[pcOf(t.m)];
-        n.type = "button"; n.className = "note" + (name.length > 1 ? " small" : "");
-        n.textContent = name; n.style.background = colorOf(t.m);
+        n.type = "button"; fillNote(n, t.m, edBase);
         n.addEventListener("click", () => { if (n.dataset.long) return; ed.cursor = i + 1; edRender(); });
         onLongPress(n, () => { edSnap(); ed.tokens.splice(i, 1); if (ed.cursor > i) ed.cursor--; edRender(); setEdMsg("けしたよ（「もとに もどす」で もどせます）"); });
         row.appendChild(n);
@@ -1327,6 +1370,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     edRender();
     setEdMsg("よみこんだよ。まちがって いる ところは なおしてから「ほぞん」してね");
   });
+
+  // ================= オクターブの はんてい =================
+  let strictOct = store.pref("strictOct") === true;
+  const paintStrict = () => $("strictBtn").textContent = strictOct ? "たかさ: きびしく はんてい（↑↓も みる）" : "たかさ: ゆるく はんてい（どの ドでも OK）";
+  $("strictBtn").addEventListener("click", () => { strictOct = !strictOct; store.pref("strictOct", strictOct); paintStrict(); });
+  paintStrict();
 
   // ================= バックアップ =================
   // "doremi." で始まる保存データを まとめて 文字にする
